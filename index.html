@@ -25,7 +25,7 @@
             --danger: #D32F2F;
             --success: #2E7D32;
             
-            /* Room Colors */
+            /* Room Colors (Matching Chips) */
             --bg-double: #E3F2FD; --tx-double: #1565C0;
             --bg-triple: #F3E5F5; --tx-triple: #7B1FA2;
             --bg-family: #FFEBEE; --tx-family: #C62828;
@@ -237,13 +237,11 @@
 </head>
 <body>
 
-    <!-- HEADER -->
     <div class="header">
         <div class="app-title">Lake Breeze Villa</div>
         <div class="header-icon" onclick="toggleTheme()"><i class="fas fa-moon"></i></div>
     </div>
 
-    <!-- MAIN CONTENT -->
     <div class="main-content">
         <!-- 1. HOME -->
         <div id="tab-home" class="screen active">
@@ -277,47 +275,28 @@
         <!-- 4. MENU -->
         <div id="tab-menu" class="screen">
             <h2 style="margin: 10px 0 20px 0;">Management</h2>
-            
             <div class="stat-card">
                 <div style="font-size:1.1rem; font-weight:700; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
                     Financials <span id="menuMonthName" style="font-weight:400; color:var(--text-light); font-size:0.9rem;"></span>
                 </div>
-                <div class="stat-row">
-                    <span>Total Revenue</span><span id="menuRevenue" style="font-weight:700">Rs 0</span>
-                </div>
-                <div class="stat-row">
-                    <span>Collected (Adv)</span><span id="menuCollected" style="color:var(--success)">Rs 0</span>
-                </div>
-                <div class="stat-row">
-                    <span>Pending (Due)</span><span id="menuPending" style="color:var(--danger)">Rs 0</span>
-                </div>
-                <div class="stat-row">
-                    <span>Expenses</span><span id="menuExpenses" style="color:var(--text-light)">Rs 0</span>
-                </div>
-                <div class="stat-row" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:1.1rem;">
-                    <span>Net Profit</span><span id="menuProfitFinal" style="font-weight:800; color:var(--primary)">Rs 0</span>
-                </div>
+                <div class="stat-row"><span>Room Revenue</span><span id="menuRevenue" style="font-weight:700">Rs 0</span></div>
+                <div class="stat-row"><span>Meal Revenue</span><span id="menuMeals" style="color:var(--success)">Rs 0</span></div>
+                <div class="stat-row"><span>Collected (Adv)</span><span id="menuCollected" style="color:var(--success)">Rs 0</span></div>
+                <div class="stat-row"><span>Pending (Due)</span><span id="menuPending" style="color:var(--danger)">Rs 0</span></div>
+                <div class="stat-row"><span>Expenses</span><span id="menuExpenses" style="color:var(--text-light)">Rs 0</span></div>
+                <div class="stat-row" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:1.1rem;"><span>Net Profit</span><span id="menuProfitFinal" style="font-weight:800; color:var(--primary)">Rs 0</span></div>
             </div>
-
             <div class="menu-list">
-                <div class="menu-row" onclick="openModal('expensesModal')">
-                    <span><i class="fas fa-receipt"></i> Expenses</span> <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i>
-                </div>
-                <div class="menu-row" onclick="exportCSV()">
-                    <span><i class="fas fa-file-csv"></i> Export Report (CSV)</span> <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i>
-                </div>
-                <div class="menu-row" onclick="exportData()">
-                    <span><i class="fas fa-cloud-download-alt"></i> Backup Data (JSON)</span> <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i>
-                </div>
-                <div class="menu-row" onclick="triggerImport()">
-                    <span><i class="fas fa-cloud-upload-alt"></i> Restore Data</span> <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i>
-                </div>
+                <div class="menu-row" onclick="openModal('mealsModal')"><span><i class="fas fa-utensils"></i> Meals</span> <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i></div>
+                <div class="menu-row" onclick="openModal('expensesModal')"><span><i class="fas fa-receipt"></i> Expenses</span> <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i></div>
+                <div class="menu-row" onclick="exportCSV()"><span><i class="fas fa-file-csv"></i> Export Report (CSV)</span> <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i></div>
+                <div class="menu-row" onclick="exportData()"><span><i class="fas fa-cloud-download-alt"></i> Backup Data (JSON)</span> <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i></div>
+                <div class="menu-row" onclick="triggerImport()"><span><i class="fas fa-cloud-upload-alt"></i> Restore Data</span> <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i></div>
             </div>
             <input type="file" id="fileInput" accept=".json" onchange="importData(this)">
         </div>
     </div>
 
-    <!-- BOTTOM NAV -->
     <div class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('home')"><i class="fas fa-home"></i> Home</div>
         <div class="nav-item" onclick="switchTab('calendar')"><i class="fas fa-calendar-alt"></i> Calendar</div>
@@ -339,49 +318,18 @@
         <div class="sheet">
             <h3 id="bookModalTitle" style="margin-top:0;">New Booking</h3>
             <p id="bookModalDate" style="color:var(--text-light); font-weight:600; margin-bottom:20px; font-size:0.9rem;"></p>
-            
-            <div class="input-group">
-                <label class="input-label">Guest Name</label>
-                <input type="text" class="input-field" id="guestName" placeholder="Enter guest name">
-            </div>
-            <div class="input-group">
-                <label class="input-label">Source</label>
-                <select id="bookingSource" class="input-field">
-                    <option value="Direct">Direct / Walk-in</option>
-                    <option value="Booking.com">Booking.com</option>
-                    <option value="Airbnb">Airbnb</option>
-                    <option value="Phone">Phone</option>
-                </select>
-            </div>
-            <div id="roomSelectDiv" class="input-group">
-                <label class="input-label">Select Room(s)</label>
-                <div id="roomChipsContainer" class="room-chips"></div>
-            </div>
-            <div id="rateOverrideDiv" class="input-group" style="display:none;">
-                <label class="input-label">Pricing Option</label>
-                <select id="rateSelect" class="input-field" onchange="calcTotal()"></select>
-            </div>
+            <div class="input-group"><label class="input-label">Guest Name</label><input type="text" class="input-field" id="guestName" placeholder="Enter guest name"></div>
+            <div class="input-group"><label class="input-label">Source</label><select id="bookingSource" class="input-field"><option value="Direct">Direct / Walk-in</option><option value="Booking.com">Booking.com</option><option value="Airbnb">Airbnb</option><option value="Phone">Phone</option></select></div>
+            <div id="roomSelectDiv" class="input-group"><label class="input-label">Select Room(s)</label><div id="roomChipsContainer" class="room-chips"></div></div>
+            <div id="rateOverrideDiv" class="input-group" style="display:none;"><label class="input-label">Pricing Option</label><select id="rateSelect" class="input-field" onchange="calcTotal()"></select></div>
             <div style="display:flex; gap:12px;">
-                <div class="input-group" style="flex:1">
-                    <label class="input-label">Guests</label>
-                    <input type="number" class="input-field" id="guestCount" value="2">
-                </div>
-                <div class="input-group" style="flex:1">
-                    <label class="input-label">Total Bill (Rs)</label>
-                    <input type="number" class="input-field" id="totalAmount" placeholder="0" oninput="updateBalance()">
-                </div>
+                <div class="input-group" style="flex:1"><label class="input-label">Guests</label><input type="number" class="input-field" id="guestCount" value="2"></div>
+                <div class="input-group" style="flex:1"><label class="input-label">Total Bill (Rs)</label><input type="number" class="input-field" id="totalAmount" placeholder="0" oninput="updateBalance()"></div>
             </div>
-            <div class="input-group">
-                <label class="input-label">Advance Paid (Rs)</label>
-                <input type="number" class="input-field" id="advance" placeholder="0" oninput="updateBalance()">
-            </div>
-            <div class="input-group">
-                <label class="input-label">Notes</label>
-                <input type="text" class="input-field" id="bookingNotes" placeholder="e.g. Late check-in">
-            </div>
+            <div class="input-group"><label class="input-label">Advance Paid (Rs)</label><input type="number" class="input-field" id="advance" placeholder="0" oninput="updateBalance()"></div>
+            <div class="input-group"><label class="input-label">Notes</label><input type="text" class="input-field" id="bookingNotes" placeholder="e.g. Late check-in"></div>
             <div style="background:var(--bg); padding:15px; border-radius:12px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-                <span style="color:var(--text-light); font-size:0.9rem;">Balance Due</span>
-                <span id="balanceDisplay" style="font-weight:800; font-size:1.1rem; color:var(--primary);">Rs 0</span>
+                <span style="color:var(--text-light); font-size:0.9rem;">Balance Due</span><span id="balanceDisplay" style="font-weight:800; font-size:1.1rem; color:var(--primary);">Rs 0</span>
             </div>
             <button class="btn btn-primary" onclick="saveBooking()" id="btnSaveBooking">Confirm Booking</button>
             <button class="btn btn-outline" onclick="closeModal('bookingModal')">Cancel</button>
@@ -414,6 +362,20 @@
         </div>
     </div>
 
+    <!-- MEALS MODAL -->
+    <div class="modal-overlay" id="mealsModal">
+        <div class="sheet">
+            <h3 style="margin-top:0;">Meals Income</h3>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <input type="text" id="mealDesc" class="input-field" placeholder="Description (e.g. Breakfast)" style="flex:2">
+                <input type="number" id="mealAmount" class="input-field" placeholder="Amount" style="flex:1">
+            </div>
+            <button class="btn btn-primary" onclick="addMeal()" style="margin-top:0; margin-bottom:20px; padding:12px;">+ Add Meal</button>
+            <div id="mealsList" style="max-height:300px; overflow-y:auto;"></div>
+            <button class="btn btn-outline" onclick="closeModal('mealsModal')">Close</button>
+        </div>
+    </div>
+
     <script>
         const ROOMS = [
             { id: 'Double Room', name: 'Double', price: 5500, color: '#1565C0', bg: '#E3F2FD', short:'Dbl' },
@@ -427,6 +389,7 @@
             viewDate: new Date(),
             bookings: JSON.parse(localStorage.getItem('hotelBookings_v7')) || {},
             expenses: JSON.parse(localStorage.getItem('hotelExpenses_v1')) || [],
+            meals: JSON.parse(localStorage.getItem('hotelMeals_v1')) || [],
             activeTab: 'home',
             filterRoom: 'All',
             selection: [],
@@ -443,11 +406,7 @@
         });
 
         function initApp() {
-            renderHome();
-            renderCalendar();
-            renderAgenda();
-            renderMenu();
-            
+            renderHome(); renderCalendar(); renderAgenda(); renderMenu();
             const chipCont = document.getElementById('roomFilterContainer');
             chipCont.innerHTML = `<div class="cal-chip active" onclick="setFilter('All', this)">All</div>`;
             ROOMS.forEach(r => {
@@ -468,51 +427,31 @@
         }
 
         // --- SEARCH ---
-        function openSearch() {
-            document.getElementById('searchModal').classList.add('open');
-            document.getElementById('searchInput').focus();
-        }
-        function closeSearch() {
-            document.getElementById('searchModal').classList.remove('open');
-        }
+        function openSearch() { document.getElementById('searchModal').classList.add('open'); document.getElementById('searchInput').focus(); }
+        function closeSearch() { document.getElementById('searchModal').classList.remove('open'); }
         function performSearch(q) {
-            const list = document.getElementById('searchResults');
-            list.innerHTML = '';
-            if(!q) return;
-            q = q.toLowerCase();
-            
-            const all = [];
-            const seen = new Set();
-            Object.values(state.bookings).flat().forEach(b => {
-                if(!seen.has(b.id)) {
-                    seen.add(b.id);
-                    all.push(b);
-                }
-            });
-            
-            const results = all.filter(b => b.name.toLowerCase().includes(q) || b.rooms.some(r => r.type.toLowerCase().includes(q)));
-            
-            results.forEach(b => {
-                const div = document.createElement('div');
-                div.className = 'agenda-item';
-                div.style.borderLeftColor = ROOMS.find(r => r.id === b.rooms[0].type)?.color;
-                const bal = b.total - b.advance;
-                const statusClass = bal <= 0 ? 'status-paid' : 'status-due';
-                const statusText = bal <= 0 ? '(Paid)' : `(Due: Rs ${bal})`;
-                div.innerHTML = `<div class="agenda-date">${b.range[0]}</div><div class="agenda-name">${b.name}</div><div class="agenda-room">${b.rooms.map(r=>r.type).join(', ')}</div><div class="agenda-price">Rs ${b.total}<span class="agenda-status ${statusClass}">${statusText}</span></div>`;
-                div.onclick = () => { closeSearch(); openDetails(b); };
-                list.appendChild(div);
-            });
+            const list = document.getElementById('searchResults'); list.innerHTML = '';
+            if(!q) return; q = q.toLowerCase();
+            const all = []; const seen = new Set();
+            Object.values(state.bookings).flat().forEach(b => { if(!seen.has(b.id)) { seen.add(b.id); all.push(b); } });
+            all.filter(b => b.name.toLowerCase().includes(q) || b.rooms.some(r => r.type.toLowerCase().includes(q)))
+                .forEach(b => {
+                    const div = document.createElement('div'); div.className = 'agenda-item';
+                    div.style.borderLeftColor = ROOMS.find(r => r.id === b.rooms[0].type)?.color;
+                    const bal = b.total - b.advance;
+                    const statusClass = bal <= 0 ? 'status-paid' : 'status-due';
+                    const statusText = bal <= 0 ? '(Paid)' : `(Due: Rs ${bal})`;
+                    div.innerHTML = `<div class="agenda-date">${b.range[0]}</div><div class="agenda-name">${b.name}</div><div class="agenda-room">${b.rooms.map(r=>r.type).join(', ')}</div><div class="agenda-price">Rs ${b.total}<span class="agenda-status ${statusClass}">${statusText}</span></div>`;
+                    div.onclick = () => { closeSearch(); openDetails(b); };
+                    list.appendChild(div);
+                });
         }
 
         // --- HOME ---
         function renderHome() {
-            const now = new Date();
-            document.getElementById('homeDateDisplay').innerText = now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
-            const container = document.getElementById('roomCardsContainer');
-            container.innerHTML = '';
+            const now = new Date(); document.getElementById('homeDateDisplay').innerText = now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
+            const container = document.getElementById('roomCardsContainer'); container.innerHTML = '';
             const today = getLocalYMD(new Date());
-
             ROOMS.forEach(r => {
                 let isBooked = false; let guestName = ''; let paymentStatus = ''; let bal = 0;
                 if (state.bookings[today]) {
@@ -521,17 +460,10 @@
                         const villaBlock = b.rooms.some(rm => rm.type === 'Full Villa');
                         return hasRoom || villaBlock;
                     });
-                    if (booking) { 
-                        isBooked = true; guestName = booking.name;
-                        bal = booking.total - booking.advance;
-                        paymentStatus = bal <= 0 ? 'PAID' : `DUE: ${bal}`;
-                    }
+                    if (booking) { isBooked = true; guestName = booking.name; bal = booking.total - booking.advance; paymentStatus = bal <= 0 ? 'PAID' : `DUE: ${bal}`; }
                 }
-                const div = document.createElement('div');
-                div.className = 'room-card'; div.style.borderLeftColor = r.color;
-                const actionsHtml = isBooked 
-                    ? `<div class="status-badge ${bal > 0 ? 'booked' : 'paid'}"><span>Booked</span><span style="font-size:0.6rem; margin-top:2px;">${paymentStatus}</span></div>` 
-                    : `<button class="quick-book-btn" onclick="quickBook('${r.id}')"><i class="fas fa-plus"></i></button>`;
+                const div = document.createElement('div'); div.className = 'room-card'; div.style.borderLeftColor = r.color;
+                const actionsHtml = isBooked ? `<div class="status-badge ${bal > 0 ? 'booked' : 'paid'}"><span>Booked</span><span style="font-size:0.6rem; margin-top:2px;">${paymentStatus}</span></div>` : `<button class="quick-book-btn" onclick="quickBook('${r.id}')"><i class="fas fa-plus"></i></button>`;
                 div.innerHTML = `<div class="room-info" onclick="goToCalendar('${r.id}')" style="cursor:pointer; flex:1;"><h3>${r.name}</h3><p>${isBooked ? 'Occupied by ' + guestName : 'Available Today'}</p></div><div class="card-actions">${actionsHtml}</div>`;
                 container.appendChild(div);
             });
@@ -539,15 +471,12 @@
 
         function quickBook(roomId) {
             const today = getLocalYMD(new Date());
-            state.selection = [today];
-            state.filterRoom = roomId;
-            openBookingModal(true);
+            state.selection = [today]; state.filterRoom = roomId; openBookingModal(true);
         }
 
         function goToCalendar(roomId) {
             state.filterRoom = roomId;
-            const chips = document.querySelectorAll('.cal-chip');
-            chips.forEach(c => {
+            document.querySelectorAll('.cal-chip').forEach(c => {
                 c.classList.remove('active');
                 if(c.innerText === ROOMS.find(r=>r.id===roomId)?.name || (roomId==='All' && c.innerText==='All')) c.classList.add('active');
             });
@@ -564,38 +493,19 @@
             renderCalendar();
         }
 
-        function changeMonth(dir) {
-            state.viewDate.setMonth(state.viewDate.getMonth() + dir);
-            renderCalendar();
-            renderMenu();
-        }
-
-        function goToToday() {
-            state.viewDate = new Date();
-            renderCalendar();
-            renderMenu();
-        }
+        function changeMonth(dir) { state.viewDate.setMonth(state.viewDate.getMonth() + dir); renderCalendar(); renderMenu(); }
+        function goToToday() { state.viewDate = new Date(); renderCalendar(); renderMenu(); }
 
         function renderCalendar() {
-            const grid = document.getElementById('calendarGrid');
-            grid.innerHTML = '';
-            const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-            days.forEach(d => grid.innerHTML += `<div class="day-head">${d}</div>`);
-            
-            const y = state.viewDate.getFullYear();
-            const m = state.viewDate.getMonth();
+            const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
+            ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => grid.innerHTML += `<div class="day-head">${d}</div>`);
+            const y = state.viewDate.getFullYear(); const m = state.viewDate.getMonth();
             document.getElementById('monthDisplay').innerText = new Date(y, m).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-            
-            const firstDay = new Date(y, m, 1).getDay();
-            const daysInMonth = new Date(y, m + 1, 0).getDate();
-            const todayStr = getLocalYMD(new Date());
+            const firstDay = new Date(y, m, 1).getDay(); const daysInMonth = new Date(y, m + 1, 0).getDate(); const todayStr = getLocalYMD(new Date());
 
             for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="day-cell" style="background:transparent; border:none; cursor:default;"></div>`;
-
             for(let d=1; d<=daysInMonth; d++) {
-                const dateStr = getLocalYMD(new Date(y, m, d));
-                const cell = document.createElement('div');
-                cell.className = 'day-cell';
+                const dateStr = getLocalYMD(new Date(y, m, d)); const cell = document.createElement('div'); cell.className = 'day-cell';
                 if(state.selection.includes(dateStr)) cell.classList.add('selected');
                 let dayNumHtml = `<span class="day-num">${d}</span>`;
                 if(dateStr === todayStr) dayNumHtml = `<span class="day-today">${d}</span>`;
@@ -613,8 +523,7 @@
                             }
                         });
                     }
-                    tagsHtml += '</div>';
-                    cell.innerHTML = `${dayNumHtml}${tagsHtml}`;
+                    tagsHtml += '</div>'; cell.innerHTML = `${dayNumHtml}${tagsHtml}`;
                 } else {
                     cell.innerHTML = dayNumHtml;
                     if(state.bookings[dateStr]) {
@@ -627,29 +536,20 @@
                         if(isBooked) cell.classList.add('booked-solid');
                     }
                 }
-                cell.onclick = () => handleDateTap(dateStr);
-                grid.appendChild(cell);
+                cell.onclick = () => handleDateTap(dateStr); grid.appendChild(cell);
             }
         }
 
         // --- AGENDA ---
         function renderAgenda() {
-            const list = document.getElementById('agendaList');
-            list.innerHTML = '';
-            const today = getLocalYMD(new Date());
-            const tomorrow = getLocalYMD(new Date(new Date().setDate(new Date().getDate() + 1)));
-            
+            const list = document.getElementById('agendaList'); list.innerHTML = '';
+            const today = getLocalYMD(new Date()); const tomorrow = getLocalYMD(new Date(new Date().setDate(new Date().getDate() + 1)));
             let all = [];
             Object.keys(state.bookings).forEach(date => {
-                if(date >= today) {
-                    state.bookings[date].forEach(b => {
-                        if(b.range[0] === date) all.push(b);
-                    });
-                }
+                if(date >= today) state.bookings[date].forEach(b => { if(b.range[0] === date) all.push(b); });
             });
             all.sort((a,b) => a.range[0].localeCompare(b.range[0]));
             if(all.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999; margin-top:20px;">No upcoming bookings</p>'; return; }
-
             let lastHeader = '';
             all.forEach(b => {
                 let headerText = '';
@@ -657,16 +557,13 @@
                 else if (b.range[0] === tomorrow) headerText = 'Tomorrow';
                 else headerText = 'Later';
                 if (headerText !== lastHeader) { list.innerHTML += `<div class="agenda-header">${headerText}</div>`; lastHeader = headerText; }
-
-                const div = document.createElement('div');
-                div.className = 'agenda-item';
+                const div = document.createElement('div'); div.className = 'agenda-item';
                 div.style.borderLeftColor = ROOMS.find(r => r.id === b.rooms[0].type)?.color;
                 const bal = b.total - b.advance;
                 const statusClass = bal <= 0 ? 'status-paid' : 'status-due';
                 const statusText = bal <= 0 ? '(Paid)' : `(Due: Rs ${bal})`;
                 div.innerHTML = `<div class="agenda-date">${b.range[0]} <span style="color:#999; font-weight:400; font-size:0.8rem; margin-left:5px;">(${b.guests} Guests)</span></div><div class="agenda-name">${b.name}</div><div class="agenda-room">${b.rooms.map(r=>r.type).join(', ')}</div><div class="agenda-price">Rs ${b.total}<span class="agenda-status ${statusClass}">${statusText}</span></div>`;
-                div.onclick = () => openDetails(b);
-                list.appendChild(div);
+                div.onclick = () => openDetails(b); list.appendChild(div);
             });
         }
 
@@ -674,26 +571,22 @@
         function renderMenu() {
             const m = getLocalYMD(state.viewDate).slice(0, 7);
             const monthName = state.viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-            
-            let revenue = 0; let collected = 0; let expense = 0; let seen = new Set();
+            let revenue = 0; let mealIncome = 0; let collected = 0; let expense = 0; let seen = new Set();
             Object.keys(state.bookings).forEach(d => {
-                state.bookings[d].forEach(b => {
-                    // Filter: Only count bookings STARTING in this month
-                    if(!seen.has(b.id) && b.range[0].startsWith(m)) { 
-                        seen.add(b.id); 
-                        revenue += b.total; 
-                        collected += parseFloat(b.advance || 0);
-                    }
+                if(d.startsWith(m)) state.bookings[d].forEach(b => {
+                    if(!seen.has(b.id)) { seen.add(b.id); revenue += b.total; collected += parseFloat(b.advance || 0); }
                 });
             });
             state.expenses.forEach(e => { if(e.date.startsWith(m)) expense += parseFloat(e.amount); });
+            state.meals.forEach(e => { if(e.date.startsWith(m)) mealIncome += parseFloat(e.amount); });
             
             document.getElementById('menuMonthName').innerText = `(${monthName})`;
             document.getElementById('menuRevenue').innerText = `Rs ${revenue.toLocaleString()}`;
+            document.getElementById('menuMeals').innerText = `Rs ${mealIncome.toLocaleString()}`;
             document.getElementById('menuCollected').innerText = `Rs ${collected.toLocaleString()}`;
             document.getElementById('menuPending').innerText = `Rs ${(revenue - collected).toLocaleString()}`;
             document.getElementById('menuExpenses').innerText = `Rs ${expense.toLocaleString()}`;
-            const profit = revenue - expense;
+            const profit = (revenue + mealIncome) - expense;
             document.getElementById('menuProfitFinal').innerText = `Rs ${profit.toLocaleString()}`;
             document.getElementById('menuProfitFinal').style.color = profit >= 0 ? 'var(--primary)' : 'var(--danger)';
         }
@@ -707,13 +600,10 @@
                 if(start > end) [start, end] = [end, start];
                 let arr = []; let curr = new Date(start); let last = new Date(end);
                 while(curr <= last) { arr.push(getLocalYMD(curr)); curr.setDate(curr.getDate()+1); }
-                
                 if(state.filterRoom !== 'All') {
-                    const conflict = checkConflict(null, null, arr); // Check specific room conflict
-                    if(conflict) { alert("Room unavailable!"); state.selection = []; renderCalendar(); return; }
+                    if(checkConflict(null, null, arr)) { alert("Room unavailable!"); state.selection = []; renderCalendar(); return; }
                 }
-                state.selection = arr;
-                openBookingModal();
+                state.selection = arr; openBookingModal();
             }
             renderCalendar();
         }
@@ -721,17 +611,14 @@
         function checkConflict(rooms, ignoreId, dateRange) {
             const ranges = dateRange || state.selection;
             const targetRooms = rooms || [{type: state.filterRoom}];
-            
             for (let d of ranges) {
                 if (state.bookings[d]) {
                     for (let b of state.bookings[d]) {
-                        if (ignoreId && b.id === ignoreId) continue;
+                        if (ignoreId && String(b.id) === String(ignoreId)) continue; 
                         const villaTaken = b.rooms.some(r => r.type === 'Full Villa');
                         const bookingVilla = targetRooms.some(r => r.type === 'Full Villa');
                         if (villaTaken || bookingVilla) return true;
-                        for (let myR of targetRooms) {
-                            if (b.rooms.some(taken => taken.type === myR.type)) return true;
-                        }
+                        for (let myR of targetRooms) { if (b.rooms.some(taken => taken.type === myR.type)) return true; }
                     }
                 }
             }
@@ -750,7 +637,6 @@
             document.getElementById('btnSaveBooking').innerText = editData ? 'Update Booking' : 'Confirm Booking';
             document.getElementById('bookModalDate').innerText = `${start.slice(5)} - ${checkOut.slice(5)} (${nights} Night${nights>1?'s':''})`;
             
-            // Populate or Clear
             document.getElementById('guestName').value = editData ? editData.name : '';
             document.getElementById('advance').value = editData ? editData.advance : '';
             document.getElementById('bookingNotes').value = editData ? editData.notes || '' : '';
@@ -773,7 +659,6 @@
                 const rateDiv = document.getElementById('rateOverrideDiv');
                 const rateSel = document.getElementById('rateSelect');
                 rateDiv.style.display = 'none';
-                
                 if (state.filterRoom.includes('Triple')) {
                     rateDiv.style.display = 'block';
                     rateSel.innerHTML = `<option value="6000">Standard (6000)</option><option value="5500">As Double (5500)</option>`;
@@ -782,30 +667,21 @@
                     rateSel.innerHTML = `<option value="6500">Standard (6500)</option><option value="6000">As Triple (6000)</option><option value="5500">As Double (5500)</option>`;
                 }
             }
-            
-            if(!editData) calcTotal(); // Only calc defaults if new
-            else updateBalance();
+            if(!editData) calcTotal(); else updateBalance();
         }
 
         function editBooking() {
             closeModal('detailsModal');
             state.editingId = state.viewBooking.id;
-            state.selection = state.viewBooking.range;
-            // Ensure we are in correct filter view or 'All' to see room chips
-            if(state.filterRoom !== 'All' && state.viewBooking.rooms[0].type !== state.filterRoom) {
-                // If editing a Triple while in Double view (unlikely via UI but possible), force All
-                state.filterRoom = 'All';
-            }
+            state.selection = state.viewBooking.range; 
+            if(state.filterRoom !== 'All' && state.viewBooking.rooms[0].type !== state.filterRoom) state.filterRoom = 'All';
             openBookingModal(false, state.viewBooking);
         }
 
         function toggleRoomChip(el) { el.classList.toggle('selected'); calcTotal(); }
 
         function calcTotal() {
-            // Only auto-calc if NOT editing with custom total, or user interacts. 
-            // Simplified: Always calc based on selection logic
             let total = 0; const nights = state.selection.length;
-            
             if(state.filterRoom === 'All') {
                 document.querySelectorAll('.room-select-chip.selected').forEach(c => {
                     const r = ROOMS.find(x => x.name === c.innerText);
@@ -835,11 +711,9 @@
 
         function saveBooking() {
             const name = document.getElementById('guestName').value;
-            const notes = document.getElementById('bookingNotes').value;
-            const source = document.getElementById('bookingSource').value;
-            const total = parseInt(document.getElementById('totalAmount').value) || 0;
-            
             if(!name) return alert('Name required');
+            const total = parseInt(document.getElementById('totalAmount').value) || 0;
+            const advance = parseInt(document.getElementById('advance').value) || 0;
             
             let rooms = [];
             if(state.filterRoom === 'All') {
@@ -848,25 +722,26 @@
                     rooms.push({type: r.id, count: 1});
                 });
                 if(rooms.length === 0) return alert('Select a room');
-            } else {
-                rooms.push({type: state.filterRoom, count: 1});
-            }
+            } else { rooms.push({type: state.filterRoom, count: 1}); }
 
             if(checkConflict(rooms, state.editingId)) return alert("⚠️ Room Conflict!");
 
-            // If Editing, remove old data first
             if (state.editingId) {
                 Object.keys(state.bookings).forEach(d => {
-                    state.bookings[d] = state.bookings[d].filter(b => b.id !== state.editingId);
+                    state.bookings[d] = state.bookings[d].filter(b => String(b.id) !== String(state.editingId));
                     if(state.bookings[d].length === 0) delete state.bookings[d];
                 });
             }
 
             const booking = {
                 id: state.editingId || Date.now().toString(),
-                name, rooms, guests: document.getElementById('guestCount').value,
-                advance: document.getElementById('advance').value || 0,
-                total: total, range: state.selection, notes, source
+                name, rooms, 
+                guests: document.getElementById('guestCount').value,
+                advance: advance,
+                total: total, 
+                range: [...state.selection], 
+                notes: document.getElementById('bookingNotes').value,
+                source: document.getElementById('bookingSource').value
             };
 
             state.selection.forEach(d => {
@@ -880,10 +755,8 @@
             renderCalendar(); renderHome(); renderAgenda(); renderMenu();
         }
 
-        // --- EXPENSES ---
         function addExpense() {
-            const desc = document.getElementById('exDesc').value;
-            const amt = document.getElementById('exAmount').value;
+            const desc = document.getElementById('exDesc').value; const amt = document.getElementById('exAmount').value;
             if(!desc || !amt) return;
             state.expenses.push({ id: Date.now().toString(), date: getLocalYMD(new Date()), desc, amount: amt });
             localStorage.setItem('hotelExpenses_v1', JSON.stringify(state.expenses));
@@ -896,129 +769,64 @@
                 list.innerHTML += `<div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border)"><span>${e.desc} <small style="color:var(--text-light)">(${e.date})</small></span><span style="color:var(--danger)">-Rs ${e.amount}</span></div>`;
             });
         }
-        function openModal(id) { document.getElementById(id).classList.add('open'); if(id==='expensesModal') renderExpensesList(); }
-        function closeModal(id) { document.getElementById(id).classList.remove('open'); if(id==='bookingModal') {state.selection=[]; state.editingId=null; renderCalendar();} }
-        function toggleTheme() {
-            const t = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-            document.body.setAttribute('data-theme', t); localStorage.setItem('theme', t);
+
+        function addMeal() {
+            const desc = document.getElementById('mealDesc').value; const amt = document.getElementById('mealAmount').value;
+            if(!desc || !amt) return;
+            state.meals.push({ id: Date.now().toString(), date: getLocalYMD(new Date()), desc, amount: amt });
+            localStorage.setItem('hotelMeals_v1', JSON.stringify(state.meals));
+            renderMealsList(); renderMenu();
+            document.getElementById('mealDesc').value = ''; document.getElementById('mealAmount').value = '';
         }
+        function renderMealsList() {
+            const list = document.getElementById('mealsList'); list.innerHTML = '';
+            state.meals.slice().reverse().forEach(e => {
+                list.innerHTML += `<div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border)"><span>${e.desc} <small style="color:var(--text-light)">(${e.date})</small></span><span style="color:var(--success)">+Rs ${e.amount}</span><i class="fas fa-trash" style="color:var(--danger); cursor:pointer; margin-left:10px;" onclick="deleteMeal('${e.id}')"></i></div>`;
+            });
+        }
+        function deleteMeal(id) { if(!confirm("Delete?")) return; state.meals = state.meals.filter(m => m.id !== id); localStorage.setItem('hotelMeals_v1', JSON.stringify(state.meals)); renderMealsList(); renderMenu(); }
+
+        function openModal(id) { document.getElementById(id).classList.add('open'); if(id==='expensesModal') renderExpensesList(); if(id==='mealsModal') renderMealsList(); }
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); if(id==='bookingModal') {state.selection=[]; state.editingId=null; renderCalendar();} }
+        function toggleTheme() { const t = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.body.setAttribute('data-theme', t); localStorage.setItem('theme', t); }
         function openDetails(b) {
             state.viewId = b.id; state.viewBooking = b;
             const dDiv = document.getElementById('detailsContent');
             const d = new Date(b.range[b.range.length-1]); d.setDate(d.getDate()+1);
-            const bal = b.total - b.advance;
-            
-            const settleBtn = bal > 0 
-                ? `<button onclick="settleBill('${b.id}')" style="background:var(--success); color:white; border:none; padding:5px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.85rem; margin-left:10px;">Settle Now</button>`
-                : '';
-
-            dDiv.innerHTML = `
-                <div style="background:var(--bg); padding:15px; border-radius:12px;">
-                    <div style="font-size:1.2rem; font-weight:700;">${b.name}</div>
-                    <div style="color:var(--text-light); margin-top:5px;">${b.rooms.map(r=>r.type).join(', ')}</div>
-                    ${b.source ? `<div style="font-size:0.8rem; margin-top:5px; color:var(--primary); font-weight:600;">Via ${b.source}</div>` : ''}
-                </div>
-                ${b.notes ? `<div style="background:#FFF3E0; color:#E65100; padding:10px; margin-top:10px; border-radius:8px; font-size:0.9rem;">📝 ${b.notes}</div>` : ''}
-                <div style="margin-top:15px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;">
-                    <span>Check-in</span> <b>${b.range[0]} (2 PM)</b>
-                </div>
-                <div style="margin-top:10px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;">
-                    <span>Check-out</span> <b>${getLocalYMD(d)} (11 AM)</b>
-                </div>
-                <div style="margin-top:10px; display:flex; justify-content:space-between; font-size:1.1rem; font-weight:700; align-items:center;">
-                    <span>Balance</span> 
-                    <div style="display:flex; align-items:center;">
-                        <span style="color:${bal > 0 ? 'var(--danger)':'var(--success)'}">Rs ${bal}</span>
-                        ${settleBtn}
-                    </div>
-                </div>
-                <div style="margin-top:5px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;">
-                    <span>Total Bill</span> <span>Rs ${b.total}</span>
-                </div>
-                <div style="margin-top:0px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;">
-                    <span>Advance</span> <span>Rs ${b.advance}</span>
-                </div>
-            `;
+            const bal = parseFloat(b.total) - parseFloat(b.advance);
+            const settleBtn = bal > 0 ? `<button onclick="settleBill('${b.id}')" style="background:var(--success); color:white; border:none; padding:5px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.85rem; margin-left:10px;">Settle Now</button>` : '';
+            dDiv.innerHTML = `<div style="background:var(--bg); padding:15px; border-radius:12px;"><div style="font-size:1.2rem; font-weight:700;">${b.name}</div><div style="color:var(--text-light); margin-top:5px;">${b.rooms.map(r=>r.type).join(', ')}</div>${b.source ? `<div style="font-size:0.8rem; margin-top:5px; color:var(--primary); font-weight:600;">Via ${b.source}</div>` : ''}</div>${b.notes ? `<div style="background:#FFF3E0; color:#E65100; padding:10px; margin-top:10px; border-radius:8px; font-size:0.9rem;">📝 ${b.notes}</div>` : ''}<div style="margin-top:15px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-in</span> <b>${b.range[0]} (2 PM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-out</span> <b>${getLocalYMD(d)} (11 AM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; font-size:1.1rem; font-weight:700; align-items:center;"><span>Balance</span> <div style="display:flex; align-items:center;"><span style="color:${bal > 0 ? 'var(--danger)':'var(--success)'}">Rs ${bal}</span>${settleBtn}</div></div><div style="margin-top:5px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Total Bill</span> <span>Rs ${b.total}</span></div><div style="margin-top:0px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Advance</span> <span>Rs ${b.advance}</span></div>`;
             openModal('detailsModal');
-            document.getElementById('btnWhatsapp').onclick = () => {
-                const msg = `Booking Confirmed! 🏨\nGuest: ${b.name}\nDates: ${b.range[0]} to ${getLocalYMD(d)}\nBalance: Rs ${bal}\nLocation: https://maps.app.goo.gl/E7mKR3UzTfT9p5ag9`;
-                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
-            };
+            document.getElementById('btnWhatsapp').onclick = () => { window.open(`https://wa.me/?text=${encodeURIComponent(`Booking Confirmed! 🏨\nGuest: ${b.name}\nDates: ${b.range[0]} to ${getLocalYMD(d)}\nBalance: Rs ${bal}\nLocation: https://maps.app.goo.gl/E7mKR3UzTfT9p5ag9`)}`); };
         }
-
         function settleBill(id) {
-            if(!confirm("Mark this booking as Fully Paid?")) return;
-            let found = false;
-            Object.keys(state.bookings).forEach(d => {
-                state.bookings[d] = state.bookings[d].map(b => {
-                    if(b.id === id) { b.advance = b.total; found = true; if(state.viewBooking && state.viewBooking.id===id) state.viewBooking = b; }
-                    return b;
-                });
-            });
-            if(found) {
-                localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings));
-                renderCalendar(); renderHome(); renderAgenda(); renderMenu(); openDetails(state.viewBooking);
-            }
-        }
-
-        function deleteBooking() {
-            if(!confirm("Delete?")) return;
-            const b = Object.values(state.bookings).flat().find(x => x.id === state.viewId);
-            if(b) {
-                b.range.forEach(d => { if(state.bookings[d]) state.bookings[d] = state.bookings[d].filter(x => x.id !== state.viewId); });
-                localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings));
-                closeModal('detailsModal'); renderCalendar(); renderHome(); renderAgenda(); renderMenu();
-            }
-        }
-        function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({bookings: state.bookings, expenses: state.expenses}));
-            const a = document.createElement('a'); a.href = dataStr; a.download = `lb_backup_${getLocalYMD(new Date())}.json`; a.click();
-        }
-        function exportCSV() {
-            // Flatten all bookings
-            let all = [];
-            let seen = new Set();
+            if(!confirm("Mark as Fully Paid?")) return;
+            let updatedBooking = null; let found = false;
             Object.keys(state.bookings).forEach(d => {
                 state.bookings[d].forEach(b => {
-                    if(!seen.has(b.id)) {
-                        seen.add(b.id);
-                        all.push(b);
+                    if(String(b.id) === String(id)) {
+                        b.advance = b.total; 
+                        updatedBooking = b; 
+                        found = true;
                     }
                 });
             });
-            
-            // Generate CSV
-            let csv = "ID,Guest Name,Check-In,Check-Out,Rooms,Guests,Total Bill,Advance,Balance,Source,Notes\n";
-            all.forEach(b => {
-                const endD = new Date(b.range[b.range.length-1]); 
-                endD.setDate(endD.getDate()+1);
-                
-                const rooms = b.rooms.map(r=>r.type).join(' | ');
-                const balance = b.total - b.advance;
-                const note = (b.notes || '').replace(/,/g, ' '); // remove commas from notes
-                
-                csv += `${b.id},${b.name},${b.range[0]},${getLocalYMD(endD)},"${rooms}",${b.guests},${b.total},${b.advance},${balance},${b.source||'Direct'},${note}\n`;
-            });
-            
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `lb_report_${getLocalYMD(new Date())}.csv`;
-            a.click();
+            if(found && updatedBooking) {
+                localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings));
+                renderCalendar(); renderHome(); renderAgenda(); renderMenu();
+                openDetails(updatedBooking);
+            }
+        }
+        function deleteBooking() { if(!confirm("Delete?")) return; const b = Object.values(state.bookings).flat().find(x=>String(x.id)===String(state.viewId)); if(b) { b.range.forEach(d=>{ if(state.bookings[d]) state.bookings[d] = state.bookings[d].filter(x=>String(x.id)!==String(state.viewId)); }); localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings)); closeModal('detailsModal'); renderCalendar(); renderHome(); renderAgenda(); renderMenu(); } }
+        function exportData() { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({bookings: state.bookings, expenses: state.expenses, meals: state.meals})); a.download = `lb_backup_${getLocalYMD(new Date())}.json`; a.click(); }
+        function exportCSV() {
+            let all=[], seen=new Set(); Object.keys(state.bookings).forEach(d=>{ state.bookings[d].forEach(b=>{ if(!seen.has(b.id)){ seen.add(b.id); all.push(b); } }); });
+            let csv="ID,Guest,CheckIn,CheckOut,Rooms,Guests,Total,Advance,Balance,Source,Notes\n";
+            all.forEach(b=>{ const endD=new Date(b.range[b.range.length-1]); endD.setDate(endD.getDate()+1); csv+=`${b.id},${b.name},${b.range[0]},${getLocalYMD(endD)},"${b.rooms.map(r=>r.type).join('|')}",${b.guests},${b.total},${b.advance},${b.total-b.advance},${b.source||'Direct'},${(b.notes||'').replace(/,/g,' ')}\n`; });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'})); a.download = `lb_report_${getLocalYMD(new Date())}.csv`; a.click();
         }
         function triggerImport() { document.getElementById('fileInput').click(); }
-        function importData(input) {
-            const r = new FileReader();
-            r.onload = (e) => {
-                const d = JSON.parse(e.target.result);
-                state.bookings = d.bookings || d; state.expenses = d.expenses || [];
-                localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings));
-                localStorage.setItem('hotelExpenses_v1', JSON.stringify(state.expenses));
-                location.reload();
-            };
-            r.readAsText(input.files[0]);
-        }
+        function importData(input) { const r = new FileReader(); r.onload = (e) => { const d = JSON.parse(e.target.result); state.bookings = d.bookings || d; state.expenses = d.expenses || []; state.meals = d.meals || []; localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings)); localStorage.setItem('hotelExpenses_v1', JSON.stringify(state.expenses)); localStorage.setItem('hotelMeals_v1', JSON.stringify(state.meals)); location.reload(); }; r.readAsText(input.files[0]); }
     </script>
 </body>
 </html>
