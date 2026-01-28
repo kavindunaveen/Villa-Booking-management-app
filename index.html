@@ -86,10 +86,11 @@
         
         .status-badge {
             padding: 6px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
-            background: #E8F5E9; color: var(--success); display: flex; flex-direction: column; align-items: center; line-height: 1.2;
+            background: #E8F5E9; color: var(--success); display: flex; flex-direction: column; align-items: center; line-height: 1.2; text-align: center;
         }
         .status-badge.booked { background: #FFEBEE; color: var(--danger); }
         .status-badge.paid { background: #E8F5E9; color: var(--success); }
+        .status-badge.blocked { background: #f0f0f0; color: #888; }
         
         .quick-book-btn {
             width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: white;
@@ -120,23 +121,28 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.03);
         }
         .day-head { text-align: center; font-size: 0.75rem; color: var(--text-light); padding: 5px; font-weight: 700; text-transform: uppercase;}
+        
+        /* UPDATED CALENDAR CELL - Taller */
         .day-cell {
-            height: 65px; border-radius: 6px; background: var(--bg);
+            min-height: 85px; /* Increased from 65px */
+            height: auto;
+            border-radius: 6px; background: var(--bg);
             position: relative; cursor: pointer; border: 1px solid transparent;
             display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start;
             padding: 4px; overflow: hidden;
         }
         .day-cell.selected { border: 2px solid var(--primary); background: #E3F2FD; }
         
-        .day-num { font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px; }
-        .day-today { background: var(--primary); color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+        .day-num { font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
+        .day-today { background: var(--primary); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
         .day-cell.booked-solid { background-color: #FFEBEE; color: var(--danger); border-color: #FFCDD2; }
         
-        .mini-tags { display: flex; flex-direction: column; gap: 1px; width: 100%; }
+        .mini-tags { display: flex; flex-direction: column; gap: 2px; width: 100%; pointer-events: none; }
         .mini-tag {
-            font-size: 0.6rem; padding: 1px 3px; border-radius: 3px;
+            font-size: 0.65rem; padding: 2px 4px; border-radius: 4px;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            font-weight: 600; color: var(--primary); background: #E3F2FD;
+            font-weight: 700; color: var(--primary); 
+            line-height: 1.2;
         }
         .tag-Double { background: var(--bg-double); color: var(--tx-double); }
         .tag-Triple { background: var(--bg-triple); color: var(--tx-triple); }
@@ -157,30 +163,66 @@
         .status-due { color: var(--danger); }
         .btn-pay-now { background: var(--success); color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer; margin-left: 5px; }
 
-        .stat-card { background: var(--card); padding: 20px; border-radius: 16px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .stat-card {
+            background: var(--card); padding: 20px; border-radius: 16px; margin-bottom: 15px; text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+        .stat-val { font-size: 2.2rem; font-weight: 800; color: var(--primary); }
+        .stat-lbl { font-size: 0.85rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; }
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; color: var(--text-main); }
-        
+
+        /* 4. MENU SCREEN */
         .menu-list { background: var(--card); border-radius: 16px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
-        .menu-row { padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 1rem; cursor: pointer; }
+        .menu-row {
+            padding: 18px 20px; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center; font-size: 1rem; cursor: pointer;
+        }
+        .menu-row:active { background: var(--bg); }
         .menu-row:last-child { border-bottom: none; }
-        .menu-row i { color: var(--primary); width: 30px; text-align: center; }
+        
+        /* Better Menu Alignment */
+        .menu-row > span { display: flex; align-items: center; font-weight: 500; }
+        .menu-row > span > i { width: 25px; margin-right: 12px; text-align: center; color: var(--primary); font-size: 1.1rem; }
 
         /* --- MODALS --- */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 1000; display: none; align-items: flex-end; }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(2px);
+            z-index: 1000; display: none; align-items: flex-end;
+        }
         .modal-overlay.open { display: flex; }
-        .sheet { background: var(--card); width: 100%; max-width: 600px; margin: 0 auto; border-radius: 24px 24px 0 0; padding: 25px; padding-bottom: calc(30px + var(--safe-bottom)); max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .sheet {
+            background: var(--card); width: 100%; max-width: 600px; margin: 0 auto;
+            border-radius: 24px 24px 0 0; padding: 25px;
+            padding-bottom: calc(30px + var(--safe-bottom));
+            max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        .fs-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 2000; display: none; flex-direction: column; }
+        /* Full Screen Search Modal */
+        .fs-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg); z-index: 2000; display: none; flex-direction: column;
+        }
         .fs-modal.open { display: flex; animation: fadeIn 0.2s; }
-        .fs-header { padding: 15px 20px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; padding-top: max(15px, env(safe-area-inset-top)); }
+        .fs-header {
+            padding: 15px 20px; background: var(--card); border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 10px; padding-top: max(15px, env(safe-area-inset-top));
+        }
 
+        /* Form Elements */
         .input-group { margin-bottom: 15px; }
         .input-label { display: block; font-size: 0.85rem; color: var(--text-light); margin-bottom: 6px; font-weight: 600; }
-        .input-field { width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); font-size: 1rem; color: var(--text-main); font-family: inherit; }
+        .input-field {
+            width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 12px;
+            background: var(--bg); font-size: 1rem; color: var(--text-main); font-family: inherit;
+        }
         .input-field:focus { outline: 2px solid var(--primary); background: var(--card); }
         
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; margin-top: 10px; cursor: pointer; transition: 0.1s; }
+        .btn {
+            width: 100%; padding: 16px; border: none; border-radius: 12px;
+            font-size: 1rem; font-weight: 700; margin-top: 10px; cursor: pointer; transition: 0.1s;
+        }
         .btn:active { transform: scale(0.98); }
         .btn-primary { background: var(--primary); color: white; }
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-light); font-weight: 600; }
@@ -188,7 +230,10 @@
         .btn-whatsapp { background: #25D366; color: white; }
 
         .room-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-        .room-select-chip { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; cursor: pointer; background: var(--bg); }
+        .room-select-chip {
+            padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);
+            font-size: 0.9rem; cursor: pointer; background: var(--bg);
+        }
         .room-select-chip.selected { background: var(--primary); color: white; border-color: var(--primary); }
 
         #fileInput { display: none; }
@@ -196,11 +241,19 @@
 </head>
 <body>
 
+    <!-- LOADING SCREEN -->
+    <div id="app-loader">
+        <div class="loader-spinner"></div>
+        <div style="font-weight:700; font-size:1.1rem; color:var(--primary)">Lake Breeze</div>
+    </div>
+
+    <!-- HEADER -->
     <div class="header">
         <div class="app-title">Lake Breeze Villa</div>
         <div class="header-icon" onclick="toggleTheme()"><i class="fas fa-moon"></i></div>
     </div>
 
+    <!-- MAIN CONTENT -->
     <div class="main-content">
         <!-- 1. HOME -->
         <div id="tab-home" class="screen active">
@@ -227,21 +280,24 @@
 
         <!-- 3. AGENDA -->
         <div id="tab-agenda" class="screen">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin: 10px 0 20px 0;">
-                <h2 style="margin:0;">Bookings</h2>
-                <i class="fas fa-history" onclick="toggleHistory()" style="font-size:1.2rem; color:var(--primary); padding:10px; cursor:pointer;"></i>
-            </div>
-            <h4 id="agendaTitle" style="margin:0 0 15px 0; color:var(--text-light);">Upcoming</h4>
+            <h2 style="margin: 10px 0 20px 0;">Upcoming</h2>
             <div id="agendaList"></div>
         </div>
 
         <!-- 4. MENU -->
         <div id="tab-menu" class="screen">
             <h2 style="margin: 10px 0 20px 0;">Management</h2>
+            
             <div class="stat-card">
-                <div style="font-size:1.1rem; font-weight:700; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
-                    Financials <span id="menuMonthName" style="font-weight:400; color:var(--text-light); font-size:0.9rem;"></span>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+                    <div style="font-size:1.1rem; font-weight:700;">Financials</div>
+                    <div style="display:flex; align-items:center; gap:10px; background:var(--bg); padding:4px 12px; border-radius:20px;">
+                        <i class="fas fa-chevron-left" onclick="changeMonth(-1)" style="cursor:pointer; color:var(--text-light); font-size:0.9rem;"></i>
+                        <span id="menuMonthName" style="font-weight:600; font-size:0.9rem; color:var(--text-main); min-width:100px; text-align:center;"></span>
+                        <i class="fas fa-chevron-right" onclick="changeMonth(1)" style="cursor:pointer; color:var(--text-light); font-size:0.9rem;"></i>
+                    </div>
                 </div>
+                
                 <div class="stat-row"><span>Room Revenue</span><span id="menuRevenue" style="font-weight:700">Rs 0</span></div>
                 <div class="stat-row"><span>Meal Revenue</span><span id="menuMeals" style="color:var(--success)">Rs 0</span></div>
                 <div class="stat-row"><span>Collected (Adv)</span><span id="menuCollected" style="color:var(--success)">Rs 0</span></div>
@@ -249,17 +305,34 @@
                 <div class="stat-row"><span>Expenses</span><span id="menuExpenses" style="color:var(--text-light)">Rs 0</span></div>
                 <div class="stat-row" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:1.1rem;"><span>Net Profit</span><span id="menuProfitFinal" style="font-weight:800; color:var(--primary)">Rs 0</span></div>
             </div>
+
             <div class="menu-list">
-                <div class="menu-row" onclick="openModal('mealsModal')"><span><i class="fas fa-utensils"></i> Meals</span> <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i></div>
-                <div class="menu-row" onclick="openModal('expensesModal')"><span><i class="fas fa-receipt"></i> Expenses</span> <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i></div>
-                <div class="menu-row" onclick="exportCSV()"><span><i class="fas fa-file-csv"></i> Export Report (CSV)</span> <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i></div>
-                <div class="menu-row" onclick="exportData()"><span><i class="fas fa-cloud-download-alt"></i> Backup Data (JSON)</span> <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i></div>
-                <div class="menu-row" onclick="triggerImport()"><span><i class="fas fa-cloud-upload-alt"></i> Restore Data</span> <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i></div>
+                <div class="menu-row" onclick="openModal('mealsModal')">
+                    <span><i class="fas fa-utensils"></i> Meals</span>
+                    <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i>
+                </div>
+                <div class="menu-row" onclick="openModal('expensesModal')">
+                    <span><i class="fas fa-receipt"></i> Expenses</span>
+                    <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i>
+                </div>
+                <div class="menu-row" onclick="exportCSV()">
+                    <span><i class="fas fa-file-csv"></i> Export Report (CSV)</span>
+                    <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i>
+                </div>
+                <div class="menu-row" onclick="exportData()">
+                    <span><i class="fas fa-cloud-download-alt"></i> Backup Data (JSON)</span>
+                    <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i>
+                </div>
+                <div class="menu-row" onclick="triggerImport()">
+                    <span><i class="fas fa-cloud-upload-alt"></i> Restore Data</span>
+                    <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i>
+                </div>
             </div>
             <input type="file" id="fileInput" accept=".json" onchange="importData(this)">
         </div>
     </div>
 
+    <!-- BOTTOM NAV -->
     <div class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('home')"><i class="fas fa-home"></i> Home</div>
         <div class="nav-item" onclick="switchTab('calendar')"><i class="fas fa-calendar-alt"></i> Calendar</div>
@@ -280,7 +353,18 @@
     <div class="modal-overlay" id="bookingModal">
         <div class="sheet">
             <h3 id="bookModalTitle" style="margin-top:0;">New Booking</h3>
-            <p id="bookModalDate" style="color:var(--text-light); font-weight:600; margin-bottom:20px; font-size:0.9rem;"></p>
+            
+            <div style="display:flex; gap:12px; margin-bottom:15px;">
+                <div class="input-group" style="flex:1">
+                    <label class="input-label">Check-in</label>
+                    <input type="date" class="input-field" id="startDate" onchange="updateDateRange()">
+                </div>
+                <div class="input-group" style="flex:1">
+                    <label class="input-label">Check-out</label>
+                    <input type="date" class="input-field" id="endDate" onchange="updateDateRange()">
+                </div>
+            </div>
+
             <div class="input-group"><label class="input-label">Guest Name</label><input type="text" class="input-field" id="guestName" placeholder="Enter guest name"></div>
             <div class="input-group"><label class="input-label">Source</label><select id="bookingSource" class="input-field"><option value="Direct">Direct / Walk-in</option><option value="Booking.com">Booking.com</option><option value="Airbnb">Airbnb</option><option value="Phone">Phone</option></select></div>
             <div id="roomSelectDiv" class="input-group"><label class="input-label">Select Room(s)</label><div id="roomChipsContainer" class="room-chips"></div></div>
@@ -304,9 +388,11 @@
         <div class="sheet">
             <h3 style="margin-top:0;">Booking Details</h3>
             <div id="detailsContent" style="margin-bottom:25px; font-size:1rem; color:var(--text-main);"></div>
-            <button class="btn btn-primary" onclick="editBooking()">Edit / Update Payment</button>
-            <button class="btn btn-whatsapp" id="btnWhatsapp"><i class="fab fa-whatsapp"></i> Share Receipt</button>
-            <button class="btn btn-danger" onclick="deleteBooking()"><i class="fas fa-trash"></i> Delete Booking</button>
+            <div id="actionButtons">
+                <button class="btn btn-primary" onclick="editBooking()">Edit / Update Payment</button>
+                <button class="btn btn-whatsapp" id="btnWhatsapp"><i class="fab fa-whatsapp"></i> Share Receipt</button>
+                <button class="btn btn-danger" onclick="deleteBooking()"><i class="fas fa-trash"></i> Delete Booking</button>
+            </div>
             <button class="btn btn-outline" onclick="closeModal('detailsModal')">Close</button>
         </div>
     </div>
@@ -365,16 +451,30 @@
         
         document.addEventListener('DOMContentLoaded', () => {
             if(localStorage.getItem('theme') === 'dark') document.body.setAttribute('data-theme', 'dark');
-            initApp();
+            
+            try {
+                initApp();
+            } catch (e) {
+                console.error("App Crash:", e);
+                alert("Error starting app. Resetting data might be needed if corruption occurred.");
+            }
+            
+            const loader = document.getElementById('app-loader');
+            if(loader) {
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 300);
+            }
         });
 
         function initApp() {
             renderHome(); renderCalendar(); renderAgenda(); renderMenu();
             const chipCont = document.getElementById('roomFilterContainer');
-            chipCont.innerHTML = `<div class="cal-chip active" onclick="setFilter('All', this)">All</div>`;
-            ROOMS.forEach(r => {
-                chipCont.innerHTML += `<div class="cal-chip" onclick="setFilter('${r.id}', this)">${r.name}</div>`;
-            });
+            if(chipCont) {
+                chipCont.innerHTML = `<div class="cal-chip active" onclick="setFilter('All', this)">All</div>`;
+                ROOMS.forEach(r => {
+                    chipCont.innerHTML += `<div class="cal-chip" onclick="setFilter('${r.id}', this)">${r.name}</div>`;
+                });
+            }
         }
 
         function switchTab(tabId) {
@@ -383,7 +483,7 @@
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             event.currentTarget.classList.add('active'); 
             state.activeTab = tabId;
-            if (tabId === 'calendar') renderCalendar();
+            if (tabId === 'calendar') setTimeout(renderCalendar, 50); // slight delay for smooth transition
             if (tabId === 'home') renderHome();
             if (tabId === 'agenda') renderAgenda();
             if (tabId === 'menu') renderMenu();
@@ -395,19 +495,28 @@
         function performSearch(q) {
             const list = document.getElementById('searchResults'); list.innerHTML = '';
             if(!q) return; q = q.toLowerCase();
-            const all = []; const seen = new Set();
-            Object.values(state.bookings).flat().forEach(b => { if(!seen.has(b.id)) { seen.add(b.id); all.push(b); } });
-            all.filter(b => b.name.toLowerCase().includes(q) || b.rooms.some(r => r.type.toLowerCase().includes(q)))
-                .forEach(b => {
-                    const div = document.createElement('div'); div.className = 'agenda-item';
-                    div.style.borderLeftColor = ROOMS.find(r => r.id === b.rooms[0].type)?.color;
-                    const bal = b.total - b.advance;
-                    const statusClass = bal <= 0 ? 'status-paid' : 'status-due';
-                    const statusText = bal <= 0 ? '(Paid)' : `(Due: Rs ${bal})`;
-                    div.innerHTML = `<div class="agenda-date">${b.range[0]}</div><div class="agenda-name">${b.name}</div><div class="agenda-room">${b.rooms.map(r=>r.type).join(', ')}</div><div class="agenda-price">Rs ${b.total}<span class="agenda-status ${statusClass}">${statusText}</span></div>`;
-                    div.onclick = () => { closeSearch(); openDetails(b); };
-                    list.appendChild(div);
-                });
+            
+            const all = [];
+            const seen = new Set();
+            Object.values(state.bookings).flat().forEach(b => {
+                if(!seen.has(b.id)) {
+                    seen.add(b.id);
+                    all.push(b);
+                }
+            });
+            
+            const results = all.filter(b => b.name.toLowerCase().includes(q) || b.rooms.some(r => r.type.toLowerCase().includes(q)));
+            
+            results.forEach(b => {
+                const div = document.createElement('div'); div.className = 'agenda-item';
+                div.style.borderLeftColor = ROOMS.find(r => r.id === b.rooms[0].type)?.color;
+                const bal = b.total - b.advance;
+                const statusClass = bal <= 0 ? 'status-paid' : 'status-due';
+                const statusText = bal <= 0 ? '(Paid)' : `(Due: Rs ${bal})`;
+                div.innerHTML = `<div class="agenda-date">${b.range[0]}</div><div class="agenda-name">${b.name}</div><div class="agenda-room">${b.rooms.map(r=>r.type).join(', ')}</div><div class="agenda-price">Rs ${b.total}<span class="agenda-status ${statusClass}">${statusText}</span></div>`;
+                div.onclick = () => { closeSearch(); openDetails(b); };
+                list.appendChild(div);
+            });
         }
 
         // --- HOME ---
@@ -415,18 +524,54 @@
             const now = new Date(); document.getElementById('homeDateDisplay').innerText = now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
             const container = document.getElementById('roomCardsContainer'); container.innerHTML = '';
             const today = getLocalYMD(new Date());
+
             ROOMS.forEach(r => {
                 let isBooked = false; let guestName = ''; let paymentStatus = ''; let bal = 0;
-                if (state.bookings[today]) {
-                    const booking = state.bookings[today].find(b => {
-                        const hasRoom = b.rooms.some(rm => rm.type === r.id);
-                        const villaBlock = b.rooms.some(rm => rm.type === 'Full Villa');
-                        return hasRoom || villaBlock;
-                    });
-                    if (booking) { isBooked = true; guestName = booking.name; bal = booking.total - booking.advance; paymentStatus = bal <= 0 ? 'PAID' : `DUE: ${bal}`; }
+                let statusClass = 'paid'; // default
+
+                if (r.id === 'Full Villa') {
+                   if (state.bookings[today] && state.bookings[today].length > 0) {
+                       isBooked = true;
+                       const villaBooking = state.bookings[today].find(b => b.rooms.some(rm => rm.type === 'Full Villa'));
+                       if (villaBooking) {
+                           guestName = villaBooking.name;
+                           bal = villaBooking.total - villaBooking.advance;
+                           paymentStatus = bal <= 0 ? 'PAID' : `DUE: ${bal}`;
+                           statusClass = bal <= 0 ? 'paid' : 'booked';
+                       } else {
+                           guestName = "Occupied";
+                           paymentStatus = "UNAVAILABLE";
+                           statusClass = "blocked"; // blocked by room
+                       }
+                   }
+                } else {
+                    if (state.bookings[today]) {
+                        const booking = state.bookings[today].find(b => {
+                            const hasRoom = b.rooms.some(rm => rm.type === r.id);
+                            const villaBlock = b.rooms.some(rm => rm.type === 'Full Villa');
+                            return hasRoom || villaBlock;
+                        });
+                        if (booking) { 
+                             isBooked = true; 
+                             // If blocked by Villa booking
+                             if (booking.rooms.some(rm => rm.type === 'Full Villa')) {
+                                 guestName = "Villa Guest";
+                                 paymentStatus = "VILLA BK";
+                                 statusClass = "blocked";
+                             } else {
+                                 guestName = booking.name; 
+                                 bal = booking.total - booking.advance;
+                                 paymentStatus = bal <= 0 ? 'PAID' : `DUE: ${bal}`;
+                                 statusClass = bal <= 0 ? 'paid' : 'booked';
+                             }
+                        }
+                    }
                 }
+
                 const div = document.createElement('div'); div.className = 'room-card'; div.style.borderLeftColor = r.color;
-                const actionsHtml = isBooked ? `<div class="status-badge ${bal > 0 ? 'booked' : 'paid'}"><span>Booked</span><span style="font-size:0.6rem; margin-top:2px;">${paymentStatus}</span></div>` : `<button class="quick-book-btn" onclick="quickBook('${r.id}')"><i class="fas fa-plus"></i></button>`;
+                const actionsHtml = isBooked 
+                    ? `<div class="status-badge ${statusClass}"><span>Booked</span><span style="font-size:0.6rem; margin-top:2px;">${paymentStatus}</span></div>` 
+                    : `<button class="quick-book-btn" onclick="quickBook('${r.id}')"><i class="fas fa-plus"></i></button>`;
                 div.innerHTML = `<div class="room-info" onclick="goToCalendar('${r.id}')" style="cursor:pointer; flex:1;"><h3>${r.name}</h3><p>${isBooked ? 'Occupied by ' + guestName : 'Available Today'}</p></div><div class="card-actions">${actionsHtml}</div>`;
                 container.appendChild(div);
             });
@@ -461,21 +606,46 @@
 
         function renderCalendar() {
             const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
-            ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => grid.innerHTML += `<div class="day-head">${d}</div>`);
+            
+            // Headers
+            const headerRow = document.createElement('div');
+            headerRow.style.display = 'contents';
+            ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+                const el = document.createElement('div'); el.className = 'day-head'; el.innerText = d;
+                headerRow.appendChild(el);
+            });
+            grid.appendChild(headerRow);
+
             const y = state.viewDate.getFullYear(); const m = state.viewDate.getMonth();
             document.getElementById('monthDisplay').innerText = new Date(y, m).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-            const firstDay = new Date(y, m, 1).getDay(); const daysInMonth = new Date(y, m + 1, 0).getDate(); const todayStr = getLocalYMD(new Date());
+            
+            const firstDay = new Date(y, m, 1).getDay();
+            const daysInMonth = new Date(y, m + 1, 0).getDate();
+            const todayStr = getLocalYMD(new Date());
 
-            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="day-cell" style="background:transparent; border:none; cursor:default;"></div>`;
+            const fragment = document.createDocumentFragment();
+
+            for(let i=0; i<firstDay; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'day-cell';
+                empty.style.background = 'transparent'; empty.style.border = 'none'; empty.style.cursor = 'default';
+                fragment.appendChild(empty);
+            }
+
             for(let d=1; d<=daysInMonth; d++) {
-                const dateStr = getLocalYMD(new Date(y, m, d)); const cell = document.createElement('div'); cell.className = 'day-cell';
+                const dateStr = getLocalYMD(new Date(y, m, d)); 
+                const cell = document.createElement('div'); 
+                cell.className = 'day-cell';
+                
                 if(state.selection.includes(dateStr)) cell.classList.add('selected');
+
                 let dayNumHtml = `<span class="day-num">${d}</span>`;
                 if(dateStr === todayStr) dayNumHtml = `<span class="day-today">${d}</span>`;
 
                 if(state.filterRoom === 'All') {
-                    let tagsHtml = '<div class="mini-tags">';
+                    let tagsHtml = '';
                     if(state.bookings[dateStr]) {
+                        tagsHtml = '<div class="mini-tags">';
                         state.bookings[dateStr].forEach(b => {
                             const rInfo = ROOMS.find(r => r.id === b.rooms[0].type);
                             if(rInfo) {
@@ -485,8 +655,9 @@
                                 tagsHtml += `<div class="mini-tag ${tagClass}">${rInfo.short}</div>`;
                             }
                         });
+                        tagsHtml += '</div>';
                     }
-                    tagsHtml += '</div>'; cell.innerHTML = `${dayNumHtml}${tagsHtml}`;
+                    cell.innerHTML = `${dayNumHtml}${tagsHtml}`;
                 } else {
                     cell.innerHTML = dayNumHtml;
                     if(state.bookings[dateStr]) {
@@ -499,86 +670,50 @@
                         if(isBooked) cell.classList.add('booked-solid');
                     }
                 }
-                cell.onclick = () => handleDateTap(dateStr); grid.appendChild(cell);
+                cell.onclick = () => handleDateTap(dateStr); 
+                fragment.appendChild(cell);
             }
-        }
-
-        // --- AGENDA ---
-        function toggleHistory() { state.showHistory = !state.showHistory; renderAgenda(); }
-
-        function renderAgenda() {
-            const list = document.getElementById('agendaList'); list.innerHTML = '';
-            document.getElementById('agendaTitle').innerText = state.showHistory ? 'History' : 'Upcoming';
-            
-            const today = getLocalYMD(new Date()); 
-            const tomorrow = getLocalYMD(new Date(new Date().setDate(new Date().getDate() + 1)));
-            
-            let all = [];
-            let seen = new Set();
-            
-            Object.keys(state.bookings).forEach(date => {
-                const isUpcoming = date >= today;
-                if(state.showHistory ? !isUpcoming : isUpcoming) {
-                    state.bookings[date].forEach(b => {
-                        if(b.range[0] === date && !seen.has(b.id)) {
-                            seen.add(b.id);
-                            all.push(b);
-                        }
-                    });
-                }
-            });
-            
-            all.sort((a,b) => a.range[0].localeCompare(b.range[0]));
-            if(state.showHistory) all.reverse(); // Newest history first
-
-            if(all.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999; margin-top:20px;">No bookings found</p>'; return; }
-
-            let lastHeader = '';
-            all.forEach(b => {
-                let headerText = '';
-                if (b.range[0] === today) headerText = 'Today';
-                else if (b.range[0] === tomorrow) headerText = 'Tomorrow';
-                else headerText = b.range[0].slice(0, 7); // Month grouping for history
-
-                if (headerText !== lastHeader) { list.innerHTML += `<div class="agenda-header">${headerText}</div>`; lastHeader = headerText; }
-
-                const div = document.createElement('div'); div.className = 'agenda-item';
-                div.style.borderLeftColor = ROOMS.find(r => r.id === b.rooms[0].type)?.color;
-                const bal = b.total - b.advance;
-                const statusClass = bal <= 0 ? 'status-paid' : 'status-due';
-                const statusText = bal <= 0 ? '(Paid)' : `(Due: Rs ${bal})`;
-                const payBtn = bal > 0 ? `<button class="btn-pay-now" onclick="event.stopPropagation(); settleBill('${b.id}')">Pay Now</button>` : '';
-                
-                div.innerHTML = `<div class="agenda-date">${b.range[0]} <span style="color:#999; font-weight:400; font-size:0.8rem; margin-left:5px;">(${b.guests} Guests)</span></div><div class="agenda-name">${b.name}</div><div class="agenda-room">${b.rooms.map(r=>r.type).join(', ')}</div><div class="agenda-price">Rs ${b.total}<br><span class="agenda-status ${statusClass}">${statusText} ${payBtn}</span></div>`;
-                div.onclick = () => openDetails(b); list.appendChild(div);
-            });
-        }
-
-        // --- MENU ---
-        function renderMenu() {
-            const m = getLocalYMD(state.viewDate).slice(0, 7);
-            const monthName = state.viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-            let revenue = 0; let mealIncome = 0; let collected = 0; let expense = 0; let seen = new Set();
-            Object.keys(state.bookings).forEach(d => {
-                if(d.startsWith(m)) state.bookings[d].forEach(b => {
-                    if(!seen.has(b.id)) { seen.add(b.id); revenue += parseFloat(b.total); collected += parseFloat(b.advance || 0); }
-                });
-            });
-            state.expenses.forEach(e => { if(e.date.startsWith(m)) expense += parseFloat(e.amount); });
-            state.meals.forEach(e => { if(e.date.startsWith(m)) mealIncome += parseFloat(e.amount); });
-            document.getElementById('menuMonthName').innerText = `(${monthName})`;
-            document.getElementById('menuRevenue').innerText = `Rs ${revenue.toLocaleString()}`;
-            document.getElementById('menuMeals').innerText = `Rs ${mealIncome.toLocaleString()}`;
-            document.getElementById('menuCollected').innerText = `Rs ${collected.toLocaleString()}`;
-            document.getElementById('menuPending').innerText = `Rs ${(revenue - collected).toLocaleString()}`;
-            document.getElementById('menuExpenses').innerText = `Rs ${expense.toLocaleString()}`;
-            const profit = (revenue + mealIncome) - expense;
-            document.getElementById('menuProfitFinal').innerText = `Rs ${profit.toLocaleString()}`;
-            document.getElementById('menuProfitFinal').style.color = profit >= 0 ? 'var(--primary)' : 'var(--danger)';
+            grid.appendChild(fragment);
         }
 
         // --- BOOKING LOGIC ---
         function handleDateTap(date) {
+            // Check for existing bookings to open details
+            const existingBookings = state.bookings[date] || [];
+            
+            const relevant = existingBookings.filter(b => {
+                if (state.filterRoom === 'All') return true;
+                const hasRoom = b.rooms.some(r => r.type === state.filterRoom);
+                const isVilla = b.rooms.some(r => r.type === 'Full Villa');
+                if (state.filterRoom === 'Full Villa') return hasRoom || b.rooms.length > 0;
+                return hasRoom || isVilla;
+            });
+
+            if (relevant.length > 0) {
+                if (relevant.length === 1) {
+                    openDetails(relevant[0]);
+                } else {
+                    // Multiple bookings
+                    let content = ``;
+                    relevant.forEach(b => {
+                        content += `<div style="padding:12px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between;" onclick="openDetailsByID('${b.id}')">
+                            <span><b>${b.name}</b></span>
+                            <span style="font-size:0.85rem; color:gray">${b.rooms.map(r=>r.type).join(', ')}</span>
+                        </div>`;
+                    });
+                    document.getElementById('detailsContent').innerHTML = content;
+                    document.getElementById('actionButtons').style.display = 'none';
+                    openModal('detailsModal');
+                    
+                    window.openDetailsByID = (id) => {
+                       const bk = relevant.find(x=>x.id===id);
+                       if(bk) openDetails(bk);
+                    };
+                }
+                return;
+            }
+
+            // Normal Booking Logic
             if (state.selection.length === 0 || state.selection.length > 1) {
                 state.selection = [date];
             } else {
@@ -586,6 +721,7 @@
                 if(start > end) [start, end] = [end, start];
                 let arr = []; let curr = new Date(start); let last = new Date(end);
                 while(curr <= last) { arr.push(getLocalYMD(curr)); curr.setDate(curr.getDate()+1); }
+                
                 if(state.filterRoom !== 'All') {
                     if(checkConflict(null, null, arr)) { alert("Room unavailable!"); state.selection = []; renderCalendar(); return; }
                 }
@@ -615,13 +751,12 @@
             document.getElementById('bookingModal').classList.add('open');
             const start = state.selection[0];
             const end = state.selection[state.selection.length-1];
+            document.getElementById('startDate').value = start;
             const d = new Date(end); d.setDate(d.getDate()+1);
-            const checkOut = getLocalYMD(d);
-            const nights = state.selection.length;
-            
+            document.getElementById('endDate').value = getLocalYMD(d);
+
             document.getElementById('bookModalTitle').innerText = editData ? 'Edit Booking' : (state.filterRoom === 'All' ? 'New Booking' : state.filterRoom);
             document.getElementById('btnSaveBooking').innerText = editData ? 'Update Booking' : 'Confirm Booking';
-            document.getElementById('bookModalDate').innerText = `${start.slice(5)} - ${checkOut.slice(5)} (${nights} Night${nights>1?'s':''})`;
             
             document.getElementById('guestName').value = editData ? editData.name : '';
             document.getElementById('advance').value = editData ? editData.advance : '';
@@ -656,6 +791,18 @@
             if(!editData) calcTotal(); else updateBalance();
         }
 
+        function updateDateRange() {
+            const s = document.getElementById('startDate').value;
+            const e = document.getElementById('endDate').value;
+            if(s && e && s < e) {
+                let arr = []; let curr = new Date(s); let last = new Date(e);
+                last.setDate(last.getDate()-1);
+                while(curr <= last) { arr.push(getLocalYMD(curr)); curr.setDate(curr.getDate()+1); }
+                state.selection = arr;
+                calcTotal();
+            }
+        }
+
         function editBooking() {
             closeModal('detailsModal');
             state.editingId = state.viewBooking.id;
@@ -668,6 +815,8 @@
 
         function calcTotal() {
             let total = 0; const nights = state.selection.length;
+            if(nights <= 0) return;
+            
             if(state.filterRoom === 'All') {
                 document.querySelectorAll('.room-select-chip.selected').forEach(c => {
                     const r = ROOMS.find(x => x.name === c.innerText);
@@ -741,6 +890,7 @@
             renderCalendar(); renderHome(); renderAgenda(); renderMenu();
         }
 
+        // --- EXPENSES ---
         function addExpense() {
             const desc = document.getElementById('exDesc').value; const amt = document.getElementById('exAmount').value;
             if(!desc || !amt) return;
@@ -775,8 +925,12 @@
         function openModal(id) { document.getElementById(id).classList.add('open'); if(id==='expensesModal') renderExpensesList(); if(id==='mealsModal') renderMealsList(); }
         function closeModal(id) { document.getElementById(id).classList.remove('open'); if(id==='bookingModal') {state.selection=[]; state.editingId=null; renderCalendar();} }
         function toggleTheme() { const t = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.body.setAttribute('data-theme', t); localStorage.setItem('theme', t); }
+        
         function openDetails(b) {
             state.viewId = b.id; state.viewBooking = b;
+            // Restore buttons if hidden
+            document.getElementById('actionButtons').style.display = 'block';
+
             const dDiv = document.getElementById('detailsContent');
             const d = new Date(b.range[b.range.length-1]); d.setDate(d.getDate()+1);
             const bal = parseFloat(b.total) - parseFloat(b.advance);
@@ -789,19 +943,20 @@
             if(!confirm("Mark as Fully Paid?")) return;
             let updatedBooking = null; let found = false;
             Object.keys(state.bookings).forEach(d => {
-                state.bookings[d].forEach(b => {
+                state.bookings[d] = state.bookings[d].map(b => {
                     if(String(b.id) === String(id)) {
                         b.advance = b.total; 
                         updatedBooking = b; 
                         found = true;
                     }
+                    return b;
                 });
             });
             if(found && updatedBooking) {
                 localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings));
                 renderCalendar(); renderHome(); renderAgenda(); renderMenu();
                 // If open in modal, refresh modal
-                if(document.getElementById('detailsModal').style.display === 'flex') openDetails(updatedBooking);
+                if(document.getElementById('detailsModal').classList.contains('open')) openDetails(updatedBooking);
             }
         }
         function deleteBooking() { if(!confirm("Delete?")) return; const b = Object.values(state.bookings).flat().find(x=>String(x.id)===String(state.viewId)); if(b) { b.range.forEach(d=>{ if(state.bookings[d]) state.bookings[d] = state.bookings[d].filter(x=>String(x.id)!==String(state.viewId)); }); localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings)); closeModal('detailsModal'); renderCalendar(); renderHome(); renderAgenda(); renderMenu(); } }
@@ -814,6 +969,70 @@
         }
         function triggerImport() { document.getElementById('fileInput').click(); }
         function importData(input) { const r = new FileReader(); r.onload = (e) => { const d = JSON.parse(e.target.result); state.bookings = d.bookings || d; state.expenses = d.expenses || []; state.meals = d.meals || []; localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings)); localStorage.setItem('hotelExpenses_v1', JSON.stringify(state.expenses)); localStorage.setItem('hotelMeals_v1', JSON.stringify(state.meals)); location.reload(); }; r.readAsText(input.files[0]); }
+    
+        function renderAgenda() {
+            const list = document.getElementById('agendaList'); list.innerHTML = '';
+            const today = getLocalYMD(new Date()); const tomorrow = getLocalYMD(new Date(new Date().setDate(new Date().getDate() + 1)));
+            let all = []; let seen = new Set();
+            Object.keys(state.bookings).forEach(date => {
+                const isUpcoming = date >= today;
+                if(state.showHistory ? !isUpcoming : isUpcoming) {
+                    state.bookings[date].forEach(b => { if(b.range[0] === date && !seen.has(b.id)) { seen.add(b.id); all.push(b); } });
+                }
+            });
+            all.sort((a,b) => a.range[0].localeCompare(b.range[0]));
+            if(state.showHistory) all.reverse();
+            if(all.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999; margin-top:20px;">No bookings found</p>'; return; }
+            
+            let lastHeader = '';
+            all.forEach(b => {
+                let headerText = '';
+                if (b.range[0] === today) headerText = 'Today';
+                else if (b.range[0] === tomorrow) headerText = 'Tomorrow';
+                else headerText = state.showHistory ? b.range[0].slice(0, 7) : 'Later';
+                if (headerText !== lastHeader) { list.innerHTML += `<div class="agenda-header">${headerText}</div>`; lastHeader = headerText; }
+                const div = document.createElement('div'); div.className = 'agenda-item';
+                div.style.borderLeftColor = ROOMS.find(r => r.id === b.rooms[0].type)?.color;
+                const bal = b.total - b.advance;
+                const statusClass = bal <= 0 ? 'status-paid' : 'status-due';
+                const statusText = bal <= 0 ? '(Paid)' : `(Due: Rs ${bal})`;
+                const payBtn = bal > 0 ? `<button class="btn-pay-now" onclick="event.stopPropagation(); settleBill('${b.id}')">Pay Now</button>` : '';
+                div.innerHTML = `<div class="agenda-date">${b.range[0]} <span style="color:#999; font-weight:400; font-size:0.8rem; margin-left:5px;">(${b.guests} Guests)</span></div><div class="agenda-name">${b.name}</div><div class="agenda-room">${b.rooms.map(r=>r.type).join(', ')}</div><div class="agenda-price">Rs ${b.total}<br><span class="agenda-status ${statusClass}">${statusText} ${payBtn}</span></div>`;
+                div.onclick = () => openDetails(b); list.appendChild(div);
+            });
+        }
+        function toggleHistory() { state.showHistory = !state.showHistory; renderAgenda(); }
+
+        // --- MENU LOGIC ---
+        function renderMenu() {
+            const m = getLocalYMD(state.viewDate).slice(0, 7);
+            const monthName = state.viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+            
+            let revenue = 0; let mealIncome = 0; let collected = 0; let expense = 0; let seen = new Set();
+            
+            // ACCURATE REVENUE RECOGNITION: Count booking if Check-in Date is in this month
+            Object.values(state.bookings).flat().forEach(b => {
+                if(!seen.has(b.id) && b.range[0].startsWith(m)) { 
+                    seen.add(b.id); 
+                    revenue += parseFloat(b.total || 0); 
+                    collected += parseFloat(b.advance || 0); 
+                }
+            });
+
+            state.expenses.forEach(e => { if(e.date.startsWith(m)) expense += parseFloat(e.amount); });
+            state.meals.forEach(e => { if(e.date.startsWith(m)) mealIncome += parseFloat(e.amount); });
+            
+            document.getElementById('menuMonthName').innerText = `(${monthName})`;
+            document.getElementById('menuRevenue').innerText = `Rs ${revenue.toLocaleString()}`;
+            document.getElementById('menuMeals').innerText = `Rs ${mealIncome.toLocaleString()}`;
+            document.getElementById('menuCollected').innerText = `Rs ${collected.toLocaleString()}`;
+            document.getElementById('menuPending').innerText = `Rs ${(revenue - collected).toLocaleString()}`;
+            document.getElementById('menuExpenses').innerText = `Rs ${expense.toLocaleString()}`;
+            const profit = (revenue + mealIncome) - expense;
+            document.getElementById('menuProfitFinal').innerText = `Rs ${profit.toLocaleString()}`;
+            document.getElementById('menuProfitFinal').style.color = profit >= 0 ? 'var(--primary)' : 'var(--danger)';
+        }
+
     </script>
 </body>
 </html>
