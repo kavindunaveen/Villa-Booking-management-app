@@ -278,6 +278,9 @@
                 <h2 style="margin:0; font-size:1.5rem;">Overview</h2>
                 <p id="homeDateDisplay" style="margin:5px 0 0 0; color:var(--text-light); font-weight:600;"></p>
             </div>
+            <button class="btn btn-outline" onclick="openInquiryShareModal()" style="margin-top:0; margin-bottom:12px;">
+                <i class="fab fa-whatsapp" style="margin-right:8px;"></i> Share Pre-Booking Details
+            </button>
             <div id="roomCardsContainer"></div>
         </div>
 
@@ -298,6 +301,10 @@
         <!-- 3. AGENDA -->
         <div id="tab-agenda" class="screen">
             <h2 style="margin: 10px 0 20px 0;">Upcoming</h2>
+            <div class="cal-controls" style="margin-bottom:12px;">
+                <div id="agendaUpcomingChip" class="cal-chip active" onclick="setAgendaMode(false)">Upcoming Bookings</div>
+                <div id="agendaPreviousChip" class="cal-chip" onclick="setAgendaMode(true)">Previous Bookings</div>
+            </div>
             <div id="agendaList"></div>
         </div>
 
@@ -412,6 +419,33 @@
         </div>
     </div>
 
+    <!-- PRE-BOOKING SHARE MODAL -->
+    <div class="modal-overlay" id="inquiryShareModal">
+        <div class="sheet">
+            <h3 style="margin-top:0;">Share Pre-Booking Details</h3>
+            <div class="input-group">
+                <label class="input-label">Requested Date</label>
+                <input type="date" id="inquiryDate" class="input-field">
+            </div>
+            <div class="input-group">
+                <label class="input-label">Requested Room(s) / Villa</label>
+                <div id="inquiryRoomChips" class="room-chips"></div>
+            </div>
+            <div class="input-group">
+                <label class="input-label">Nights</label>
+                <input type="number" id="inquiryNights" class="input-field" min="1" value="1" oninput="updateInquiryEstimate()">
+            </div>
+            <div style="background:var(--bg); padding:12px; border-radius:12px; margin-bottom:12px; font-size:0.9rem;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                    <span style="color:var(--text-light);">Estimated Total</span>
+                    <b id="inquiryTotalDisplay">Rs 0</b>
+                </div>
+            </div>
+            <button class="btn btn-whatsapp" onclick="shareInquiryDetails()"><i class="fab fa-whatsapp"></i> Share on WhatsApp</button>
+            <button class="btn btn-outline" onclick="closeModal('inquiryShareModal')">Close</button>
+        </div>
+    </div>
+
     <!-- DETAILS MODAL -->
     <div class="modal-overlay" id="detailsModal">
         <div class="sheet">
@@ -487,6 +521,11 @@
 
         const getLocalYMD = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Colombo' });
         const formatRs = (v) => `Rs ${(parseFloat(v) || 0).toLocaleString('en-US')}/-`;
+        const formatDateDMY = (dateStr) => {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ''))) return dateStr || '-';
+            const [y, m, d] = String(dateStr).split('-');
+            return `${d}.${m}.${y}`;
+        };
         const getMonthKey = (dateStr) => String(dateStr || '').slice(0, 7);
         const formatMonthLabel = (ym) => {
             if (!/^\d{4}-\d{2}$/.test(ym || '')) return 'Unknown Month';
@@ -555,6 +594,16 @@
         // --- SEARCH ---
         function openSearch() { document.getElementById('searchModal').classList.add('open'); document.getElementById('searchInput').focus(); }
         function closeSearch() { document.getElementById('searchModal').classList.remove('open'); }
+        function setAgendaMode(showHistory) {
+            state.showHistory = !!showHistory;
+            const upcomingChip = document.getElementById('agendaUpcomingChip');
+            const previousChip = document.getElementById('agendaPreviousChip');
+            if (upcomingChip && previousChip) {
+                upcomingChip.classList.toggle('active', !state.showHistory);
+                previousChip.classList.toggle('active', state.showHistory);
+            }
+            renderAgenda();
+        }
         function performSearch(q) {
             const list = document.getElementById('searchResults'); list.innerHTML = '';
             if(!q) return; q = q.toLowerCase();
@@ -643,6 +692,58 @@
         function quickBook(roomId) {
             const today = getLocalYMD(new Date());
             state.selection = [today]; state.filterRoom = roomId; openBookingModal(true);
+        }
+
+        function openInquiryShareModal() {
+            const cont = document.getElementById('inquiryRoomChips');
+            cont.innerHTML = '';
+            ROOMS.forEach(r => {
+                cont.innerHTML += `<div class="room-select-chip" onclick="toggleInquiryRoomChip(this)" data-room-id="${r.id}">${r.name}</div>`;
+            });
+            document.getElementById('inquiryDate').value = getLocalYMD(new Date());
+            document.getElementById('inquiryNights').value = 1;
+            updateInquiryEstimate();
+            openModal('inquiryShareModal');
+        }
+
+        function toggleInquiryRoomChip(el) {
+            el.classList.toggle('selected');
+            updateInquiryEstimate();
+        }
+
+        function getSelectedInquiryRooms() {
+            const selected = [];
+            document.querySelectorAll('#inquiryRoomChips .room-select-chip.selected').forEach(chip => {
+                const roomId = chip.getAttribute('data-room-id');
+                if (roomId) selected.push({ type: roomId, count: 1 });
+            });
+            return selected;
+        }
+
+        function getInquiryRoomNightlyTotal(rooms) {
+            return (rooms || []).reduce((sum, room) => {
+                return sum + (getInquiryRoomUnitRate(room.type) * (parseInt(room.count, 10) || 1));
+            }, 0);
+        }
+
+        function getInquiryRoomUnitRate(roomType) {
+            const nights = Math.max(1, parseInt(document.getElementById('inquiryNights')?.value || '1', 10) || 1);
+            if (roomType === 'Full Villa') return nights >= 2 ? 24000 : 25000;
+            if (roomType === 'Double Room') return 5500;
+            if (roomType === 'Triple Room 1' || roomType === 'Triple Room 2') return 6000;
+            if (roomType === 'Family Room') return 6500;
+            const r = ROOMS.find(x => x.id === roomType);
+            return r ? r.price : 0;
+        }
+
+        function updateInquiryEstimate() {
+            const nightsInput = document.getElementById('inquiryNights');
+            if (!nightsInput) return;
+            const rooms = getSelectedInquiryRooms();
+            const nights = Math.max(1, parseInt(nightsInput.value || '1', 10) || 1);
+            const total = getInquiryRoomNightlyTotal(rooms) * nights;
+            const totalEl = document.getElementById('inquiryTotalDisplay');
+            if (totalEl) totalEl.innerText = `Rs ${total.toLocaleString('en-US')}`;
         }
 
         function goToCalendar(roomId) {
@@ -1112,6 +1213,9 @@
 
         function openModal(id) {
             document.getElementById(id).classList.add('open');
+            if(id==='inquiryShareModal') {
+                updateInquiryEstimate();
+            }
             if(id==='expensesModal') {
                 document.getElementById('exDate').value = getDefaultTxnDateForSelectedMonth();
                 refreshTxnModalContext();
@@ -1173,47 +1277,98 @@
         }
 
         function buildWhatsAppBookingText(b) {
-            const E = {
-                check: '\u2705',
-                warn: '\u26A0\uFE0F',
-                hotel: '\uD83C\uDFE8',
-                guest: '\uD83D\uDC64',
-                phone: '\uD83D\uDCDE',
-                bed: '\uD83D\uDECF\uFE0F',
-                people: '\uD83D\uDC65',
-                calendar: '\uD83D\uDCC5',
-                money: '\uD83D\uDCB0',
-                house: '\uD83C\uDFE1',
-                pin: '\uD83D\uDCCD',
-                thanks: '\uD83D\uDE4F'
-            };
             const advance = parseFloat(b.advance) || 0;
             const balance = (parseFloat(b.total) || 0) - advance;
             const roomLines = (b.rooms || []).map(formatRoomLineForShare).join('\n') || '-';
             const guestPhone = (b.guestPhone || '').trim() || 'Not provided';
-            const guestCount = b.guests ? `${E.people} Total guests: ${b.guests}` : '';
+            const guestCount = b.guests ? `Total guests: ${b.guests}` : '';
 
             return [
-                `${advance > 0 ? `${E.check} Advance ${formatRs(advance)} received.` : `${E.warn} Advance not received yet.`}`,
-                `${E.hotel} Booking Confirmed!`,
+                `${advance > 0 ? `Advance ${formatRs(advance)} received.` : 'Advance not received yet.'}`,
+                'Booking Confirmed!',
                 '',
-                `${E.guest} Guest: ${b.name || '-'}`,
-                `${E.phone} Guest Contact No: ${guestPhone}`,
+                `Guest: ${b.name || '-'}`,
+                `Guest Contact No: ${guestPhone}`,
                 '',
-                `${E.bed} Booked Room(s):`,
+                'Booked Room(s):',
                 ...(guestCount ? [guestCount] : []),
                 roomLines,
                 '',
-                `${E.calendar} Stay Dates: ${formatDateLineForShare(b)}`,
+                `Stay Dates: ${formatDateLineForShare(b)}`,
                 '',
-                `${E.money} Balance: ${formatRs(balance)}`,
+                `Balance: ${formatRs(balance)}`,
                 '',
-                `${E.house} Lake Breeze Villa Contact: 071 370 2074`,
-                `${E.pin} Location: https://maps.app.goo.gl/E7mKR3UzTfT9p5ag9`,
+                'Lake Breeze Villa Contact: 071 370 2074',
+                'Location: https://maps.app.goo.gl/E7mKR3UzTfT9p5ag9',
                 '',
-                `Thank you for booking with us ${E.thanks}`
+                'Thank you for booking with us'
             ].join('\n');
         }
+
+        function formatInquiryRoomRateLine(room) {
+            const unitRate = getInquiryRoomUnitRate(room.type);
+            if (!unitRate) return `${formatRoomLineForShare(room)} - Rate on request`;
+            return `${formatRoomLineForShare(room)} - ${formatRs(unitRate)} per night`;
+        }
+
+        function formatInquiryDatesList(date, nights) {
+            const count = Math.max(1, parseInt(nights, 10) || 1);
+            const start = new Date(date);
+            const lines = [];
+            for (let i = 0; i < count; i++) {
+                const current = new Date(start);
+                current.setDate(start.getDate() + i);
+                lines.push(`${formatDateDMY(getLocalYMD(current))} night`);
+            }
+            return lines.join('\n');
+        }
+
+        function buildInquiryShareText() {
+            const date = document.getElementById('inquiryDate')?.value;
+            const nights = Math.max(1, parseInt(document.getElementById('inquiryNights')?.value || '1', 10) || 1);
+            const rooms = getSelectedInquiryRooms();
+            if (!date) { alert('Select a requested date'); return ''; }
+            if (rooms.length === 0) { alert('Select room(s) or villa'); return ''; }
+
+            const total = getInquiryRoomNightlyTotal(rooms) * nights;
+            const roomLines = rooms.map(formatInquiryRoomRateLine).join('\n');
+            const dateLines = formatInquiryDatesList(date, nights);
+
+            return [
+                'Hello and a warm welcome from Lake Breeze Villa!',
+                '',
+                'Thank you for your interest in staying with us. We are delighted to host you at our cozy villa in the heart of Anuradhapura.',
+                '',
+                'Requested Room Type(s) & Rate:',
+                '',
+                roomLines,
+                '',
+                `Estimated total for selected room(s): ${formatRs(total)}`,
+                '',
+                'Requested Booking Date(s):',
+                dateLines,
+                'To confirm your booking, we kindly request a 30% advance payment.',
+                '',
+                'Bank Details for Advance Payment:',
+                '',
+                'HNB Anuradhapura',
+                'Name - PREMATHILAKA P K N',
+                'Account Number - 010020514010',
+                '',
+                'Once the payment is made, please share the payment slip or confirmation with us so we can finalize your reservation.',
+                '',
+                'Looking forward to welcoming you soon!',
+                'Warm regards,',
+                'Lake Breeze Villa'
+            ].join('\n');
+        }
+
+        function shareInquiryDetails() {
+            const text = buildInquiryShareText();
+            if (!text) return;
+            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+        }
+
         function settleBill(id) {
             if(!confirm("Mark as Fully Paid?")) return;
             let updatedBooking = null; let found = false;
@@ -1260,6 +1415,14 @@
     
         function renderAgenda() {
             const list = document.getElementById('agendaList'); list.innerHTML = '';
+            const agendaTitle = document.querySelector('#tab-agenda h2');
+            if (agendaTitle) agendaTitle.innerText = state.showHistory ? 'Previous Bookings' : 'Upcoming Bookings';
+            const upcomingChip = document.getElementById('agendaUpcomingChip');
+            const previousChip = document.getElementById('agendaPreviousChip');
+            if (upcomingChip && previousChip) {
+                upcomingChip.classList.toggle('active', !state.showHistory);
+                previousChip.classList.toggle('active', state.showHistory);
+            }
             const today = getLocalYMD(new Date()); const tomorrow = getLocalYMD(new Date(new Date().setDate(new Date().getDate() + 1)));
             let all = []; let seen = new Set();
             Object.keys(state.bookings).forEach(date => {
@@ -1270,7 +1433,7 @@
             });
             all.sort((a,b) => a.range[0].localeCompare(b.range[0]));
             if(state.showHistory) all.reverse();
-            if(all.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999; margin-top:20px;">No bookings found</p>'; return; }
+            if(all.length === 0) { list.innerHTML = `<p style="text-align:center;color:#999; margin-top:20px;">No ${state.showHistory ? 'previous' : 'upcoming'} bookings found</p>`; return; }
             
             let lastHeader = '';
             all.forEach(b => {
@@ -1289,7 +1452,7 @@
                 div.onclick = () => openDetails(b); list.appendChild(div);
             });
         }
-        function toggleHistory() { state.showHistory = !state.showHistory; renderAgenda(); }
+        function toggleHistory() { setAgendaMode(!state.showHistory); }
 
         // --- MENU LOGIC ---
         function renderMenu() {
