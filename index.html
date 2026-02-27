@@ -244,6 +244,7 @@
         }
         .room-picker-btn:active { transform: scale(0.99); }
         .room-picker-btn.selected { border-color: var(--primary); background: #E3F2FD; }
+        .room-picker-btn.disabled { opacity: 0.6; cursor: not-allowed; }
         .room-picker-btn .name { font-weight: 700; }
         .room-picker-btn .meta { font-size: 0.82rem; color: var(--text-light); margin-top: 3px; }
         .room-picker-status {
@@ -934,32 +935,49 @@
             list.innerHTML = '';
 
             const roomChoices = ROOMS;
+            const dayBookings = state.bookings[date] || [];
             roomChoices.forEach(room => {
-                const relevant = (state.bookings[date] || []).find(b => {
-                    const hasRoom = b.rooms.some(r => r.type === room.id);
-                    const villaBlock = b.rooms.some(r => r.type === 'Full Villa');
-                    return hasRoom || villaBlock;
-                });
-
                 let statusClass = 'available';
                 let statusText = 'Available';
                 let metaText = room.name;
+                if (room.id === 'Full Villa') {
+                    // Full villa must be unavailable if any room is already booked on the day.
+                    if (dayBookings.length > 0) {
+                        const villaBooking = dayBookings.find(b => b.rooms.some(r => r.type === 'Full Villa'));
+                        if (villaBooking) {
+                            statusClass = 'booked';
+                            statusText = 'Booked';
+                            metaText = `Guest: ${villaBooking.name}`;
+                        } else {
+                            statusClass = 'blocked';
+                            statusText = 'Unavailable';
+                            metaText = 'Blocked by existing room booking';
+                        }
+                    }
+                } else {
+                    const relevant = dayBookings.find(b => {
+                        const hasRoom = b.rooms.some(r => r.type === room.id);
+                        const villaBlock = b.rooms.some(r => r.type === 'Full Villa');
+                        return hasRoom || villaBlock;
+                    });
 
-                if (relevant) {
-                    const villaBlock = relevant.rooms.some(r => r.type === 'Full Villa') && !relevant.rooms.some(r => r.type === room.id);
-                    if (villaBlock) {
-                        statusClass = 'blocked';
-                        statusText = 'Villa Block';
-                        metaText = `Blocked by ${relevant.name}`;
-                    } else {
-                        statusClass = 'booked';
-                        statusText = 'Booked';
-                        metaText = `Guest: ${relevant.name}`;
+                    if (relevant) {
+                        const villaBlock = relevant.rooms.some(r => r.type === 'Full Villa') && !relevant.rooms.some(r => r.type === room.id);
+                        if (villaBlock) {
+                            statusClass = 'blocked';
+                            statusText = 'Villa Block';
+                            metaText = `Blocked by ${relevant.name}`;
+                        } else {
+                            statusClass = 'booked';
+                            statusText = 'Booked';
+                            metaText = `Guest: ${relevant.name}`;
+                        }
                     }
                 }
+                const isSelectable = statusClass === 'available';
 
                 list.innerHTML += `
-                    <button class="room-picker-btn" data-room-id="${room.id}" onclick="toggleRoomPickerRoom(this)">
+                    <button class="room-picker-btn ${isSelectable ? '' : 'disabled'}" data-room-id="${room.id}" data-selectable="${isSelectable ? '1' : '0'}" onclick="toggleRoomPickerRoom(this)">
                         <div>
                             <div class="name">${room.name}</div>
                             <div class="meta">${metaText}</div>
@@ -975,6 +993,7 @@
         function toggleRoomPickerRoom(el) {
             const roomId = el.getAttribute('data-room-id');
             if (!roomId) return;
+            if (el.getAttribute('data-selectable') !== '1') return;
 
             el.classList.toggle('selected');
 
