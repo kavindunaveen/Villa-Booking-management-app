@@ -243,6 +243,7 @@
             display: flex; justify-content: space-between; align-items: center; gap: 10px;
         }
         .room-picker-btn:active { transform: scale(0.99); }
+        .room-picker-btn.selected { border-color: var(--primary); background: #E3F2FD; }
         .room-picker-btn .name { font-weight: 700; }
         .room-picker-btn .meta { font-size: 0.82rem; color: var(--text-light); margin-top: 3px; }
         .room-picker-status {
@@ -389,13 +390,12 @@
                 </div>
             </div>
 
-            <div class="input-group"><label class="input-label">Guest Name</label><input type="text" class="input-field" id="guestName" placeholder="Enter guest name"></div>
             <div class="input-group"><label class="input-label">Guest Contact No</label><input type="tel" class="input-field" id="guestPhone" placeholder="e.g. 0711620682"></div>
             <div class="input-group"><label class="input-label">Source</label><select id="bookingSource" class="input-field"><option value="Direct">Direct / Walk-in</option><option value="Booking.com">Booking.com</option><option value="Airbnb">Airbnb</option><option value="Phone">Phone</option></select></div>
             <div id="roomSelectDiv" class="input-group"><label class="input-label">Select Room(s)</label><div id="roomChipsContainer" class="room-chips"></div></div>
             <div id="rateOverrideDiv" class="input-group" style="display:none;"><label class="input-label">Pricing Option</label><select id="rateSelect" class="input-field" onchange="calcTotal()"></select></div>
             <div style="display:flex; gap:12px;">
-                <div class="input-group" style="flex:1"><label class="input-label">Guests</label><input type="number" class="input-field" id="guestCount" value="2"></div>
+                <div class="input-group" style="flex:1"><label class="input-label">Guests</label><input type="number" class="input-field" id="guestCount" value="2" oninput="this.dataset.autoGuest='0'"></div>
                 <div class="input-group" style="flex:1"><label class="input-label">Total Bill (Rs)</label><input type="number" class="input-field" id="totalAmount" placeholder="0" oninput="updateBalance()"></div>
             </div>
             <div class="input-group"><label class="input-label">Advance Paid (Rs)</label><input type="number" class="input-field" id="advance" placeholder="0" oninput="updateBalance()"></div>
@@ -411,10 +411,11 @@
     <!-- CALENDAR ROOM PICKER MODAL -->
     <div class="modal-overlay" id="roomPickerModal">
         <div class="sheet">
-            <h3 style="margin-top:0;">Select Room</h3>
+            <h3 style="margin-top:0;">Select Room(s)</h3>
             <div id="roomPickerDateLabel" style="color:var(--text-light); font-weight:600; margin-bottom:14px;"></div>
             <div id="roomPickerList" class="room-picker-list"></div>
-            <button class="btn btn-outline" onclick="continueAllBookingFromRoomPicker()" style="margin-top:0;">Continue with All Rooms Booking</button>
+            <button class="btn btn-primary" onclick="continueSelectedRoomsFromRoomPicker()" style="margin-top:0;">Continue with Selected Room(s)</button>
+            <button class="btn btn-outline" onclick="openExistingBookingsFromRoomPicker()" style="margin-top:0;">View / Edit Existing Booking</button>
             <button class="btn btn-outline" onclick="closeModal('roomPickerModal')">Close</button>
         </div>
     </div>
@@ -516,7 +517,10 @@
             viewId: null,
             editingId: null,
             showHistory: false,
-            roomPickerDate: null
+            roomPickerDate: null,
+            roomPickerSelection: [],
+            bookingRoomsLocked: false,
+            lockedBookingRooms: []
         };
 
         const getLocalYMD = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Colombo' });
@@ -924,11 +928,12 @@
 
         function openRoomPickerForDate(date) {
             state.roomPickerDate = date;
+            state.roomPickerSelection = [];
             document.getElementById('roomPickerDateLabel').innerText = date;
             const list = document.getElementById('roomPickerList');
             list.innerHTML = '';
 
-            const roomChoices = ROOMS.filter(r => r.id !== 'Full Villa');
+            const roomChoices = ROOMS;
             roomChoices.forEach(room => {
                 const relevant = (state.bookings[date] || []).find(b => {
                     const hasRoom = b.rooms.some(r => r.type === room.id);
@@ -954,7 +959,7 @@
                 }
 
                 list.innerHTML += `
-                    <button class="room-picker-btn" onclick="selectCalendarRoom('${room.id.replace(/'/g, "\\'")}')">
+                    <button class="room-picker-btn" data-room-id="${room.id}" onclick="toggleRoomPickerRoom(this)">
                         <div>
                             <div class="name">${room.name}</div>
                             <div class="meta">${metaText}</div>
@@ -967,21 +972,69 @@
             openModal('roomPickerModal');
         }
 
-        function selectCalendarRoom(roomId) {
-            const date = state.roomPickerDate;
-            closeModal('roomPickerModal');
-            if (!date) return;
+        function toggleRoomPickerRoom(el) {
+            const roomId = el.getAttribute('data-room-id');
+            if (!roomId) return;
 
-            state.filterRoom = roomId;
+            el.classList.toggle('selected');
+
+            if (el.classList.contains('selected') && roomId === 'Full Villa') {
+                document.querySelectorAll('#roomPickerList .room-picker-btn').forEach(btn => {
+                    if (btn !== el) btn.classList.remove('selected');
+                });
+            } else if (el.classList.contains('selected') && roomId !== 'Full Villa') {
+                const villaBtn = document.querySelector('#roomPickerList .room-picker-btn[data-room-id="Full Villa"]');
+                if (villaBtn) villaBtn.classList.remove('selected');
+            }
+
+            state.roomPickerSelection = Array.from(document.querySelectorAll('#roomPickerList .room-picker-btn.selected'))
+                .map(btn => btn.getAttribute('data-room-id'))
+                .filter(Boolean);
+        }
+
+        function continueSelectedRoomsFromRoomPicker() {
+            const date = state.roomPickerDate;
+            if (!date) return;
+            if (!state.roomPickerSelection.length) return alert('Select at least one room');
+
+            const chosenRooms = [...state.roomPickerSelection];
+            closeModal('roomPickerModal');
+            state.bookingRoomsLocked = true;
+            state.lockedBookingRooms = chosenRooms;
+            state.roomPickerSelection = [...chosenRooms];
+            state.filterRoom = 'All';
             syncCalendarFilterChips();
+            state.selection = [date];
+            openBookingModal(true);
             renderCalendar();
-            handleDateTap(date, true);
         }
 
         function continueAllBookingFromRoomPicker() {
             const date = state.roomPickerDate;
             closeModal('roomPickerModal');
             if (!date) return;
+            state.bookingRoomsLocked = false;
+            state.lockedBookingRooms = [];
+            state.roomPickerSelection = [];
+            handleDateTap(date, true);
+        }
+
+        function openExistingBookingsFromRoomPicker() {
+            const date = state.roomPickerDate;
+            closeModal('roomPickerModal');
+            if (!date) return;
+            state.bookingRoomsLocked = false;
+            state.lockedBookingRooms = [];
+            state.roomPickerSelection = [];
+
+            const existing = state.bookings[date] || [];
+            if (existing.length === 0) {
+                alert('No existing bookings on this date');
+                return;
+            }
+
+            state.filterRoom = 'All';
+            syncCalendarFilterChips();
             handleDateTap(date, true);
         }
 
@@ -1013,37 +1066,34 @@
             document.getElementById('bookModalTitle').innerText = editData ? 'Edit Booking' : (state.filterRoom === 'All' ? 'New Booking' : state.filterRoom);
             document.getElementById('btnSaveBooking').innerText = editData ? 'Update Booking' : 'Confirm Booking';
             
-            document.getElementById('guestName').value = editData ? editData.name : '';
             document.getElementById('guestPhone').value = editData ? (editData.guestPhone || '') : '';
             document.getElementById('advance').value = editData ? editData.advance : '';
             document.getElementById('bookingNotes').value = editData ? editData.notes || '' : '';
             document.getElementById('bookingSource').value = editData ? editData.source || 'Direct' : 'Direct';
             document.getElementById('totalAmount').value = editData ? editData.total : '';
-            document.getElementById('guestCount').value = editData ? editData.guests : '2';
+            const guestCountInput = document.getElementById('guestCount');
+            guestCountInput.value = editData ? editData.guests : '2';
+            guestCountInput.dataset.autoGuest = editData ? '0' : '1';
 
             const chipContainer = document.getElementById('roomChipsContainer');
             chipContainer.innerHTML = '';
-            
-            if(state.filterRoom === 'All') {
-                document.getElementById('roomSelectDiv').style.display = 'block';
-                document.getElementById('rateOverrideDiv').style.display = 'none';
-                ROOMS.forEach(r => {
-                    const isSelected = editData && editData.rooms.some(rm => rm.type === r.id);
-                    chipContainer.innerHTML += `<div class="room-select-chip ${isSelected?'selected':''}" onclick="toggleRoomChip(this)">${r.name}</div>`;
-                });
-            } else {
-                document.getElementById('roomSelectDiv').style.display = 'none';
-                const rateDiv = document.getElementById('rateOverrideDiv');
-                const rateSel = document.getElementById('rateSelect');
-                rateDiv.style.display = 'none';
-                if (state.filterRoom.includes('Triple')) {
-                    rateDiv.style.display = 'block';
-                    rateSel.innerHTML = `<option value="6000">Standard (6000)</option><option value="5500">As Double (5500)</option>`;
-                } else if (state.filterRoom === 'Family Room') {
-                    rateDiv.style.display = 'block';
-                    rateSel.innerHTML = `<option value="6500">Standard (6500)</option><option value="6000">As Triple (6000)</option><option value="5500">As Double (5500)</option>`;
-                }
+
+            const lockRooms = state.bookingRoomsLocked && !editData;
+            document.getElementById('roomSelectDiv').style.display = lockRooms ? 'none' : 'block';
+            ROOMS.forEach(r => {
+                const selectedByEdit = editData && editData.rooms.some(rm => rm.type === r.id);
+                const selectedByFilter = !editData && state.filterRoom !== 'All' && state.filterRoom === r.id;
+                const selectedByPicker = !editData && state.roomPickerSelection.includes(r.id);
+                const selectedByLocked = !editData && lockRooms && state.lockedBookingRooms.includes(r.id);
+                chipContainer.innerHTML += `<div class="room-select-chip ${(selectedByEdit || selectedByFilter || selectedByPicker || selectedByLocked) ? 'selected' : ''}" data-room-id="${r.id}" onclick="toggleRoomChip(this)">${r.name}</div>`;
+            });
+
+            refreshRateOverrideForSelection();
+            if (!editData && !lockRooms) {
+                state.roomPickerSelection = [];
+                state.lockedBookingRooms = [];
             }
+            updateGuestCountDefault();
             if(!editData) calcTotal(); else updateBalance();
         }
 
@@ -1067,27 +1117,103 @@
             openBookingModal(false, state.viewBooking);
         }
 
-        function toggleRoomChip(el) { el.classList.toggle('selected'); calcTotal(); }
+        function getSelectedModalRooms() {
+            const rooms = [];
+            document.querySelectorAll('#roomChipsContainer .room-select-chip.selected').forEach(c => {
+                const roomId = c.getAttribute('data-room-id');
+                if (roomId) rooms.push({ type: roomId, count: 1 });
+            });
+            return rooms;
+        }
+
+        function getEffectiveSelectedModalRooms() {
+            const direct = getSelectedModalRooms();
+            if (direct.length > 0) return direct;
+            if (state.bookingRoomsLocked && state.lockedBookingRooms.length > 0) {
+                return state.lockedBookingRooms.map(type => ({ type, count: 1 }));
+            }
+            return [];
+        }
+
+        function refreshRateOverrideForSelection() {
+            const rateDiv = document.getElementById('rateOverrideDiv');
+            const rateSel = document.getElementById('rateSelect');
+            const selectedRooms = getEffectiveSelectedModalRooms();
+
+            rateDiv.style.display = 'none';
+            if (state.filterRoom === 'All' || selectedRooms.length !== 1) return;
+
+            const selectedType = selectedRooms[0].type;
+            if (selectedType.includes('Triple')) {
+                rateDiv.style.display = 'block';
+                rateSel.innerHTML = `<option value="6000">Standard (6000)</option><option value="5500">As Double (5500)</option>`;
+            } else if (selectedType === 'Family Room') {
+                rateDiv.style.display = 'block';
+                rateSel.innerHTML = `<option value="6500">Standard (6500)</option><option value="6000">As Triple (6000)</option><option value="5500">As Double (5500)</option>`;
+            }
+        }
+
+        function getRoomDefaultGuestCount(roomType) {
+            if (roomType === 'Double Room') return 2;
+            if (roomType === 'Triple Room 1' || roomType === 'Triple Room 2') return 3;
+            if (roomType === 'Family Room') return 4;
+            if (roomType === 'Full Villa') return 12;
+            return 0;
+        }
+
+        function updateGuestCountDefault() {
+            const guestCountInput = document.getElementById('guestCount');
+            if (!guestCountInput || guestCountInput.dataset.autoGuest === '0') return;
+            const rooms = getEffectiveSelectedModalRooms();
+            if (!rooms.length) {
+                guestCountInput.value = '2';
+                return;
+            }
+            const totalGuests = rooms.reduce((sum, room) => sum + getRoomDefaultGuestCount(room.type), 0);
+            guestCountInput.value = String(totalGuests || 2);
+        }
+
+        function toggleRoomChip(el) {
+            const roomId = el.getAttribute('data-room-id');
+            const willSelect = !el.classList.contains('selected');
+
+            el.classList.toggle('selected');
+
+            // Villa cannot be combined with other rooms.
+            if (willSelect && roomId === 'Full Villa') {
+                document.querySelectorAll('#roomChipsContainer .room-select-chip').forEach(c => {
+                    if (c !== el) c.classList.remove('selected');
+                });
+            } else if (willSelect && roomId !== 'Full Villa') {
+                const villaChip = document.querySelector('#roomChipsContainer .room-select-chip[data-room-id="Full Villa"]');
+                if (villaChip) villaChip.classList.remove('selected');
+            }
+
+            refreshRateOverrideForSelection();
+            updateGuestCountDefault();
+            calcTotal();
+        }
 
         function calcTotal() {
             let total = 0; const nights = state.selection.length;
             if(nights <= 0) return;
-            
-            if(state.filterRoom === 'All') {
-                document.querySelectorAll('.room-select-chip.selected').forEach(c => {
-                    const r = ROOMS.find(x => x.name === c.innerText);
-                    let price = r.price;
-                    if(r.id === 'Full Villa' && nights >= 2) price = 24000;
-                    total += price * nights;
-                });
-            } else {
-                let price = ROOMS.find(r => r.id === state.filterRoom).price;
-                if(document.getElementById('rateOverrideDiv').style.display !== 'none') {
-                    price = parseInt(document.getElementById('rateSelect').value);
-                }
-                if(state.filterRoom === 'Full Villa' && nights >= 2) price = 24000;
-                total = price * nights;
+
+            const selectedRooms = getEffectiveSelectedModalRooms();
+            selectedRooms.forEach(room => {
+                let price = ROOMS.find(r => r.id === room.type)?.price || 0;
+                if(room.type === 'Full Villa' && nights >= 2) price = 24000;
+                total += price * nights;
+            });
+
+            if(
+                state.filterRoom !== 'All' &&
+                selectedRooms.length === 1 &&
+                document.getElementById('rateOverrideDiv').style.display !== 'none'
+            ) {
+                const override = parseInt(document.getElementById('rateSelect').value, 10);
+                if (!isNaN(override)) total = override * nights;
             }
+
             document.getElementById('totalAmount').value = total;
             updateBalance();
         }
@@ -1101,19 +1227,13 @@
         }
 
         function saveBooking() {
-            const name = document.getElementById('guestName').value;
-            if(!name) return alert('Name required');
+            const guestPhone = document.getElementById('guestPhone').value.trim();
+            if(!guestPhone) return alert('Guest contact number required');
             const total = parseInt(document.getElementById('totalAmount').value) || 0;
             const advance = parseInt(document.getElementById('advance').value) || 0;
             
-            let rooms = [];
-            if(state.filterRoom === 'All') {
-                document.querySelectorAll('.room-select-chip.selected').forEach(c => {
-                    const r = ROOMS.find(x => x.name === c.innerText);
-                    rooms.push({type: r.id, count: 1});
-                });
-                if(rooms.length === 0) return alert('Select a room');
-            } else { rooms.push({type: state.filterRoom, count: 1}); }
+            const rooms = getEffectiveSelectedModalRooms();
+            if(rooms.length === 0) return alert('Select at least one room');
 
             if(checkConflict(rooms, state.editingId)) return alert("⚠️ Room Conflict!");
 
@@ -1126,9 +1246,9 @@
 
             const booking = {
                 id: state.editingId || Date.now().toString(),
-                name, rooms, 
+                name: guestPhone, rooms, 
                 guests: document.getElementById('guestCount').value,
-                guestPhone: document.getElementById('guestPhone').value.trim(),
+                guestPhone: guestPhone,
                 advance: advance,
                 total: total, 
                 range: [...state.selection], 
@@ -1229,8 +1349,8 @@
         }
         function closeModal(id) {
             document.getElementById(id).classList.remove('open');
-            if(id==='bookingModal') { state.selection=[]; state.editingId=null; renderCalendar(); }
-            if(id==='roomPickerModal') { state.roomPickerDate = null; }
+            if(id==='bookingModal') { state.selection=[]; state.editingId=null; state.bookingRoomsLocked=false; state.lockedBookingRooms=[]; renderCalendar(); }
+            if(id==='roomPickerModal') { state.roomPickerDate = null; state.roomPickerSelection = []; }
         }
         function toggleTheme() { const t = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.body.setAttribute('data-theme', t); localStorage.setItem('theme', t); }
         
