@@ -500,12 +500,27 @@
 
     <script>
         const ROOMS = [
-            { id: 'Double Room', name: 'Double', price: 5500, color: '#1565C0', bg: '#E3F2FD', short:'Dbl' },
-            { id: 'Triple Room 1', name: 'Triple 1', price: 6000, color: '#7B1FA2', bg: '#F3E5F5', short:'Tr1' },
-            { id: 'Triple Room 2', name: 'Triple 2', price: 6000, color: '#5856D6', bg: '#EDE7F6', short:'Tr2' },
-            { id: 'Family Room', name: 'Family', price: 6500, color: '#C62828', bg: '#FFEBEE', short:'Fam' },
+            { id: 'Double Room', name: 'Double', price: 6000, color: '#1565C0', bg: '#E3F2FD', short:'Dbl' },
+            { id: 'Triple Room 1', name: 'Triple 1', price: 7000, color: '#7B1FA2', bg: '#F3E5F5', short:'Tr1' },
+            { id: 'Triple Room 2', name: 'Triple 2', price: 7000, color: '#5856D6', bg: '#EDE7F6', short:'Tr2' },
+            { id: 'Family Room', name: 'Family', price: 8500, color: '#C62828', bg: '#FFEBEE', short:'Fam' },
             { id: 'Full Villa', name: 'Villa', price: 25000, color: '#2E7D32', bg: '#E8F5E9', short:'Vil' }
         ];
+        const PRICE_CHANGE_DATE = '2026-03-09';
+        const LEGACY_ROOM_RATES = {
+            'Double Room': 5500,
+            'Triple Room 1': 6000,
+            'Triple Room 2': 6000,
+            'Family Room': 6500,
+            'Full Villa': 25000
+        };
+        const UPDATED_ROOM_RATES = {
+            'Double Room': 6000,
+            'Triple Room 1': 7000,
+            'Triple Room 2': 7000,
+            'Family Room': 8500,
+            'Full Villa': 25000
+        };
 
         let state = {
             viewDate: new Date(),
@@ -538,6 +553,21 @@
             return new Date(yy, mm - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         };
         const getSelectedMonthKey = () => getLocalYMD(state.viewDate).slice(0, 7);
+        function isDateOnOrAfter(dateStr, baselineYmd) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ''))) return false;
+            return dateStr >= baselineYmd;
+        }
+        function getRateCardForDate(dateStr) {
+            return isDateOnOrAfter(dateStr, PRICE_CHANGE_DATE) ? UPDATED_ROOM_RATES : LEGACY_ROOM_RATES;
+        }
+        function getNightlyRoomRate(roomType, dateStr, nights) {
+            const nightsCount = Math.max(1, parseInt(nights, 10) || 1);
+            if (roomType === 'Full Villa') return nightsCount >= 2 ? 24000 : 25000;
+            const rateCard = getRateCardForDate(dateStr);
+            if (rateCard[roomType] != null) return rateCard[roomType];
+            const fallback = ROOMS.find(r => r.id === roomType);
+            return fallback ? fallback.price : 0;
+        }
         function getDefaultTxnDateForSelectedMonth() {
             const today = getLocalYMD(new Date());
             const selectedMonth = getSelectedMonthKey();
@@ -725,20 +755,16 @@
             return selected;
         }
 
-        function getInquiryRoomNightlyTotal(rooms) {
+        function getInquiryRoomNightlyTotal(rooms, dateStr) {
             return (rooms || []).reduce((sum, room) => {
-                return sum + (getInquiryRoomUnitRate(room.type) * (parseInt(room.count, 10) || 1));
+                return sum + (getInquiryRoomUnitRate(room.type, dateStr) * (parseInt(room.count, 10) || 1));
             }, 0);
         }
 
-        function getInquiryRoomUnitRate(roomType) {
+        function getInquiryRoomUnitRate(roomType, dateStr) {
             const nights = Math.max(1, parseInt(document.getElementById('inquiryNights')?.value || '1', 10) || 1);
-            if (roomType === 'Full Villa') return nights >= 2 ? 24000 : 25000;
-            if (roomType === 'Double Room') return 5500;
-            if (roomType === 'Triple Room 1' || roomType === 'Triple Room 2') return 6000;
-            if (roomType === 'Family Room') return 6500;
-            const r = ROOMS.find(x => x.id === roomType);
-            return r ? r.price : 0;
+            const inquiryDate = dateStr || document.getElementById('inquiryDate')?.value || getLocalYMD(new Date());
+            return getNightlyRoomRate(roomType, inquiryDate, nights);
         }
 
         function updateInquiryEstimate() {
@@ -746,7 +772,8 @@
             if (!nightsInput) return;
             const rooms = getSelectedInquiryRooms();
             const nights = Math.max(1, parseInt(nightsInput.value || '1', 10) || 1);
-            const total = getInquiryRoomNightlyTotal(rooms) * nights;
+            const inquiryDate = document.getElementById('inquiryDate')?.value || getLocalYMD(new Date());
+            const total = getInquiryRoomNightlyTotal(rooms, inquiryDate) * nights;
             const totalEl = document.getElementById('inquiryTotalDisplay');
             if (totalEl) totalEl.innerText = `Rs ${total.toLocaleString('en-US')}`;
         }
@@ -1158,6 +1185,8 @@
             const rateDiv = document.getElementById('rateOverrideDiv');
             const rateSel = document.getElementById('rateSelect');
             const selectedRooms = getEffectiveSelectedModalRooms();
+            const checkInDate = state.selection[0] || getLocalYMD(new Date());
+            const activeRates = getRateCardForDate(checkInDate);
 
             rateDiv.style.display = 'none';
             if (state.filterRoom === 'All' || selectedRooms.length !== 1) return;
@@ -1165,10 +1194,10 @@
             const selectedType = selectedRooms[0].type;
             if (selectedType.includes('Triple')) {
                 rateDiv.style.display = 'block';
-                rateSel.innerHTML = `<option value="6000">Standard (6000)</option><option value="5500">As Double (5500)</option>`;
+                rateSel.innerHTML = `<option value="${activeRates['Triple Room 1']}">Standard (${activeRates['Triple Room 1']})</option><option value="${activeRates['Double Room']}">As Double (${activeRates['Double Room']})</option>`;
             } else if (selectedType === 'Family Room') {
                 rateDiv.style.display = 'block';
-                rateSel.innerHTML = `<option value="6500">Standard (6500)</option><option value="6000">As Triple (6000)</option><option value="5500">As Double (5500)</option>`;
+                rateSel.innerHTML = `<option value="${activeRates['Family Room']}">Standard (${activeRates['Family Room']})</option><option value="${activeRates['Triple Room 1']}">As Triple (${activeRates['Triple Room 1']})</option><option value="${activeRates['Double Room']}">As Double (${activeRates['Double Room']})</option>`;
             }
         }
 
@@ -1216,11 +1245,11 @@
         function calcTotal() {
             let total = 0; const nights = state.selection.length;
             if(nights <= 0) return;
+            const checkInDate = state.selection[0] || getLocalYMD(new Date());
 
             const selectedRooms = getEffectiveSelectedModalRooms();
             selectedRooms.forEach(room => {
-                let price = ROOMS.find(r => r.id === room.type)?.price || 0;
-                if(room.type === 'Full Villa' && nights >= 2) price = 24000;
+                const price = getNightlyRoomRate(room.type, checkInDate, nights);
                 total += price * nights;
             });
 
@@ -1445,7 +1474,8 @@
         }
 
         function formatInquiryRoomRateLine(room) {
-            const unitRate = getInquiryRoomUnitRate(room.type);
+            const inquiryDate = document.getElementById('inquiryDate')?.value || getLocalYMD(new Date());
+            const unitRate = getInquiryRoomUnitRate(room.type, inquiryDate);
             if (!unitRate) return `${formatRoomLineForShare(room)} - Rate on request`;
             return `${formatRoomLineForShare(room)} - ${formatRs(unitRate)} per night`;
         }
@@ -1469,7 +1499,7 @@
             if (!date) { alert('Select a requested date'); return ''; }
             if (rooms.length === 0) { alert('Select room(s) or villa'); return ''; }
 
-            const total = getInquiryRoomNightlyTotal(rooms) * nights;
+            const total = getInquiryRoomNightlyTotal(rooms, date) * nights;
             const roomLines = rooms.map(formatInquiryRoomRateLine).join('\n');
             const dateLines = formatInquiryDatesList(date, nights);
 
