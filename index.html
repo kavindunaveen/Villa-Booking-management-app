@@ -818,8 +818,22 @@
             });
         }
 
-        function changeMonth(dir) { state.viewDate.setMonth(state.viewDate.getMonth() + dir); renderCalendar(); renderMenu(); }
-        function goToToday() { state.viewDate = new Date(); renderCalendar(); renderMenu(); }
+        function changeMonth(dir) {
+            state.viewDate.setMonth(state.viewDate.getMonth() + dir);
+            renderCalendar();
+            renderMenu();
+            refreshTxnModalContext();
+            renderExpensesList();
+            renderMealsList();
+        }
+        function goToToday() {
+            state.viewDate = new Date();
+            renderCalendar();
+            renderMenu();
+            refreshTxnModalContext();
+            renderExpensesList();
+            renderMealsList();
+        }
 
         function refreshTxnModalContext() {
             const monthLabel = formatMonthLabel(getSelectedMonthKey());
@@ -1340,20 +1354,17 @@
             const list = document.getElementById('expensesList'); list.innerHTML = '';
             if(state.expenses.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No expenses yet</p>'; return; }
             const selectedMonth = getSelectedMonthKey();
-            const groups = {};
-            state.expenses.forEach(e => {
-                const key = getMonthKey(e.date) || 'Unknown';
-                if(!groups[key]) groups[key] = [];
-                groups[key].push(e);
-            });
-            Object.keys(groups).sort((a,b) => b.localeCompare(a)).forEach(monthKey => {
-                const items = groups[monthKey].slice().sort((a,b) => String(b.date).localeCompare(String(a.date)));
-                const subtotal = items.reduce((sum, x) => sum + (parseFloat(x.amount) || 0), 0);
-                const isSelected = monthKey === selectedMonth;
-                list.innerHTML += `<div style="position:sticky; top:0; background:var(--card); padding:10px 12px; border-bottom:1px solid var(--border); border-top:1px solid var(--border); font-weight:700; z-index:1; color:${isSelected ? 'var(--primary)' : 'var(--text-main)'};">${formatMonthLabel(monthKey)} <span style="float:right; color:var(--danger); font-weight:700;">Rs ${subtotal.toLocaleString()}</span></div>`;
-                items.forEach(e => {
-                    list.innerHTML += `<div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border)"><span>${e.desc} <small style="color:var(--text-light)">(${e.date})</small></span><span style="color:var(--danger)">-Rs ${e.amount}</span></div>`;
-                });
+            const items = state.expenses
+                .filter(e => getMonthKey(e.date) === selectedMonth)
+                .sort((a,b) => String(b.date).localeCompare(String(a.date)));
+            if(items.length === 0) {
+                list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No expenses for this month</p>';
+                return;
+            }
+            const subtotal = items.reduce((sum, x) => sum + (parseFloat(x.amount) || 0), 0);
+            list.innerHTML += `<div style="position:sticky; top:0; background:var(--card); padding:10px 12px; border-bottom:1px solid var(--border); border-top:1px solid var(--border); font-weight:700; z-index:1; color:var(--primary);">${formatMonthLabel(selectedMonth)} <span style="float:right; color:var(--danger); font-weight:700;">Rs ${subtotal.toLocaleString()}</span></div>`;
+            items.forEach(e => {
+                list.innerHTML += `<div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border)"><span>${e.desc} <small style="color:var(--text-light)">(${e.date})</small></span><span style="color:var(--danger)">-Rs ${e.amount}</span></div>`;
             });
         }
 
@@ -1371,20 +1382,17 @@
             const list = document.getElementById('mealsList'); list.innerHTML = '';
             if(state.meals.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No meals income yet</p>'; return; }
             const selectedMonth = getSelectedMonthKey();
-            const groups = {};
-            state.meals.forEach(e => {
-                const key = getMonthKey(e.date) || 'Unknown';
-                if(!groups[key]) groups[key] = [];
-                groups[key].push(e);
-            });
-            Object.keys(groups).sort((a,b) => b.localeCompare(a)).forEach(monthKey => {
-                const items = groups[monthKey].slice().sort((a,b) => String(b.date).localeCompare(String(a.date)));
-                const subtotal = items.reduce((sum, x) => sum + (parseFloat(x.amount) || 0), 0);
-                const isSelected = monthKey === selectedMonth;
-                list.innerHTML += `<div style="position:sticky; top:0; background:var(--card); padding:10px 12px; border-bottom:1px solid var(--border); border-top:1px solid var(--border); font-weight:700; z-index:1; color:${isSelected ? 'var(--primary)' : 'var(--text-main)'};">${formatMonthLabel(monthKey)} <span style="float:right; color:var(--success); font-weight:700;">Rs ${subtotal.toLocaleString()}</span></div>`;
-                items.forEach(e => {
-                    list.innerHTML += `<div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border)"><span>${e.desc} <small style="color:var(--text-light)">(${e.date})</small></span><span style="color:var(--success)">+Rs ${e.amount}</span><i class="fas fa-trash" style="color:var(--danger); cursor:pointer; margin-left:10px;" onclick="deleteMeal('${e.id}')"></i></div>`;
-                });
+            const items = state.meals
+                .filter(e => getMonthKey(e.date) === selectedMonth)
+                .sort((a,b) => String(b.date).localeCompare(String(a.date)));
+            if(items.length === 0) {
+                list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No meals income for this month</p>';
+                return;
+            }
+            const subtotal = items.reduce((sum, x) => sum + (parseFloat(x.amount) || 0), 0);
+            list.innerHTML += `<div style="position:sticky; top:0; background:var(--card); padding:10px 12px; border-bottom:1px solid var(--border); border-top:1px solid var(--border); font-weight:700; z-index:1; color:var(--primary);">${formatMonthLabel(selectedMonth)} <span style="float:right; color:var(--success); font-weight:700;">Rs ${subtotal.toLocaleString()}</span></div>`;
+            items.forEach(e => {
+                list.innerHTML += `<div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border)"><span>${e.desc} <small style="color:var(--text-light)">(${e.date})</small></span><span style="color:var(--success)">+Rs ${e.amount}</span><i class="fas fa-trash" style="color:var(--danger); cursor:pointer; margin-left:10px;" onclick="deleteMeal('${e.id}')"></i></div>`;
             });
         }
         function deleteMeal(id) { if(!confirm("Delete?")) return; state.meals = state.meals.filter(m => m.id !== id); localStorage.setItem('hotelMeals_v1', JSON.stringify(state.meals)); renderMealsList(); renderMenu(); }
