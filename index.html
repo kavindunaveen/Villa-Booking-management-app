@@ -503,10 +503,11 @@
             { id: 'Double Room', name: 'Double', price: 6000, color: '#1565C0', bg: '#E3F2FD', short:'Dbl' },
             { id: 'Triple Room 1', name: 'Triple 1', price: 7000, color: '#7B1FA2', bg: '#F3E5F5', short:'Tr1' },
             { id: 'Triple Room 2', name: 'Triple 2', price: 7000, color: '#5856D6', bg: '#EDE7F6', short:'Tr2' },
-            { id: 'Family Room', name: 'Family', price: 8500, color: '#C62828', bg: '#FFEBEE', short:'Fam' },
+            { id: 'Family Room', name: 'Family', price: 7500, color: '#C62828', bg: '#FFEBEE', short:'Fam' },
             { id: 'Full Villa', name: 'Villa', price: 25000, color: '#2E7D32', bg: '#E8F5E9', short:'Vil' }
         ];
         const PRICE_CHANGE_DATE = '2026-03-09';
+        const LATEST_PRICE_CHANGE_DATE = '2026-04-07';
         const LEGACY_ROOM_RATES = {
             'Double Room': 5500,
             'Triple Room 1': 6000,
@@ -519,6 +520,13 @@
             'Triple Room 1': 7000,
             'Triple Room 2': 7000,
             'Family Room': 8500,
+            'Full Villa': 25000
+        };
+        const CURRENT_ROOM_RATES = {
+            'Double Room': 6000,
+            'Triple Room 1': 7000,
+            'Triple Room 2': 7000,
+            'Family Room': 7500,
             'Full Villa': 25000
         };
 
@@ -558,7 +566,9 @@
             return dateStr >= baselineYmd;
         }
         function getRateCardForDate(dateStr) {
-            return isDateOnOrAfter(dateStr, PRICE_CHANGE_DATE) ? UPDATED_ROOM_RATES : LEGACY_ROOM_RATES;
+            if (isDateOnOrAfter(dateStr, LATEST_PRICE_CHANGE_DATE)) return CURRENT_ROOM_RATES;
+            if (isDateOnOrAfter(dateStr, PRICE_CHANGE_DATE)) return UPDATED_ROOM_RATES;
+            return LEGACY_ROOM_RATES;
         }
         function getNightlyRoomRate(roomType, dateStr, nights) {
             const nightsCount = Math.max(1, parseInt(nights, 10) || 1);
