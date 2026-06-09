@@ -235,6 +235,14 @@
             font-size: 0.9rem; cursor: pointer; background: var(--bg);
         }
         .room-select-chip.selected { background: var(--primary); color: white; border-color: var(--primary); }
+        .room-use-list { display: grid; gap: 8px; margin-top: 10px; }
+        .room-use-row {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg);
+        }
+        .room-use-row .input-field { width: auto; min-width: 145px; padding: 9px 10px; }
+        .room-use-name { font-size: 0.88rem; font-weight: 700; }
+        .room-use-hint { font-size: 0.75rem; color: var(--text-light); margin-top: 2px; }
 
         .room-picker-list { display: grid; gap: 10px; margin-bottom: 12px; }
         .room-picker-btn {
@@ -324,10 +332,10 @@
                     </div>
                 </div>
                 
-                <div class="stat-row"><span>Room Revenue</span><span id="menuRevenue" style="font-weight:700">Rs 0</span></div>
+                <div class="stat-row"><span>Room Cash In</span><span id="menuRevenue" style="font-weight:700">Rs 0</span></div>
                 <div class="stat-row"><span>Meal Revenue</span><span id="menuMeals" style="color:var(--success)">Rs 0</span></div>
-                <div class="stat-row"><span>Collected (Adv)</span><span id="menuCollected" style="color:var(--success)">Rs 0</span></div>
-                <div class="stat-row"><span>Pending (Due)</span><span id="menuPending" style="color:var(--danger)">Rs 0</span></div>
+                <div class="stat-row"><span>Booking Value</span><span id="menuCollected" style="color:var(--success)">Rs 0</span></div>
+                <div class="stat-row"><span>Outstanding Due</span><span id="menuPending" style="color:var(--danger)">Rs 0</span></div>
                 <div class="stat-row"><span>Expenses</span><span id="menuExpenses" style="color:var(--text-light)">Rs 0</span></div>
                 <div class="stat-row" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:1.1rem;"><span>Net Profit</span><span id="menuProfitFinal" style="font-weight:800; color:var(--primary)">Rs 0</span></div>
             </div>
@@ -393,7 +401,14 @@
 
             <div class="input-group"><label class="input-label">Guest Contact No</label><input type="tel" class="input-field" id="guestPhone" placeholder="e.g. 0711620682"></div>
             <div class="input-group"><label class="input-label">Source</label><select id="bookingSource" class="input-field"><option value="Direct">Direct / Walk-in</option><option value="Booking.com">Booking.com</option><option value="Airbnb">Airbnb</option><option value="Phone">Phone</option></select></div>
-            <div id="roomSelectDiv" class="input-group"><label class="input-label">Select Room(s)</label><div id="roomChipsContainer" class="room-chips"></div></div>
+            <div id="roomSelectDiv" class="input-group">
+                <label class="input-label">Select Physical Room(s)</label>
+                <div id="roomChipsContainer" class="room-chips"></div>
+            </div>
+            <div id="bookingRoomUseDiv" class="input-group" style="display:none;">
+                <label class="input-label">Room Setup / Sell As</label>
+                <div id="bookingRoomUseOptions" class="room-use-list"></div>
+            </div>
             <div id="rateOverrideDiv" class="input-group" style="display:none;"><label class="input-label">Pricing Option</label><select id="rateSelect" class="input-field" onchange="calcTotal()"></select></div>
             <div style="display:flex; gap:12px;">
                 <div class="input-group" style="flex:1"><label class="input-label">Guests</label><input type="number" class="input-field" id="guestCount" value="2" oninput="this.dataset.autoGuest='0'"></div>
@@ -426,16 +441,20 @@
         <div class="sheet">
             <h3 style="margin-top:0;">Share Pre-Booking Details</h3>
             <div class="input-group">
-                <label class="input-label">Requested Date</label>
-                <input type="date" id="inquiryDate" class="input-field">
+                <label class="input-label">Check-in</label>
+                <input type="date" id="inquiryStartDate" class="input-field" onchange="updateInquiryDateRange()">
             </div>
             <div class="input-group">
-                <label class="input-label">Requested Room(s) / Villa</label>
+                <label class="input-label">Check-out</label>
+                <input type="date" id="inquiryEndDate" class="input-field" onchange="updateInquiryDateRange()">
+            </div>
+            <div class="input-group">
+                <label class="input-label">Requested Physical Room(s) / Villa</label>
                 <div id="inquiryRoomChips" class="room-chips"></div>
             </div>
-            <div class="input-group">
-                <label class="input-label">Nights</label>
-                <input type="number" id="inquiryNights" class="input-field" min="1" value="1" oninput="updateInquiryEstimate()">
+            <div id="inquiryRoomUseDiv" class="input-group" style="display:none;">
+                <label class="input-label">Room Setup / Sell As</label>
+                <div id="inquiryRoomUseOptions" class="room-use-list"></div>
             </div>
             <div style="background:var(--bg); padding:12px; border-radius:12px; margin-bottom:12px; font-size:0.9rem;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
@@ -455,6 +474,7 @@
             <div id="detailsContent" style="margin-bottom:25px; font-size:1rem; color:var(--text-main);"></div>
             <div id="actionButtons">
                 <button class="btn btn-primary" onclick="editBooking()">Edit / Update Payment</button>
+                <button class="btn btn-outline" onclick="changeBookingRooms()"><i class="fas fa-exchange-alt"></i> Change Room(s) / Setup</button>
                 <button class="btn btn-whatsapp" id="btnWhatsapp"><i class="fab fa-whatsapp"></i> Share Receipt</button>
                 <button class="btn btn-danger" onclick="deleteBooking()"><i class="fas fa-trash"></i> Delete Booking</button>
             </div>
@@ -578,6 +598,44 @@
             const fallback = ROOMS.find(r => r.id === roomType);
             return fallback ? fallback.price : 0;
         }
+        function getDefaultRoomSetup(roomType) {
+            if (roomType === 'Double Room') return 'Double';
+            if (roomType === 'Triple Room 1' || roomType === 'Triple Room 2') return 'Triple';
+            if (roomType === 'Family Room') return 'Family';
+            if (roomType === 'Full Villa') return 'Full Villa';
+            return roomType;
+        }
+        function getRoomSetupOptions(roomType) {
+            if (roomType === 'Double Room') return ['Double', 'Triple'];
+            if (roomType === 'Triple Room 1' || roomType === 'Triple Room 2') return ['Triple', 'Double'];
+            if (roomType === 'Family Room') return ['Family', 'Triple', 'Double'];
+            return [getDefaultRoomSetup(roomType)];
+        }
+        function getRoomSetupRate(room, dateStr, nights) {
+            const setup = room.soldAs || getDefaultRoomSetup(room.type);
+            if (setup === 'Double') return getNightlyRoomRate('Double Room', dateStr, nights);
+            if (setup === 'Triple') return getNightlyRoomRate('Triple Room 1', dateStr, nights);
+            if (setup === 'Family') return getNightlyRoomRate('Family Room', dateStr, nights);
+            return getNightlyRoomRate(room.type, dateStr, nights);
+        }
+        function getRoomSetupGuestCount(room) {
+            const setup = room.soldAs || getDefaultRoomSetup(room.type);
+            if (setup === 'Double') return 2;
+            if (setup === 'Triple') return 3;
+            if (setup === 'Family') return 4;
+            if (setup === 'Full Villa') return 12;
+            return getRoomDefaultGuestCount(room.type);
+        }
+        function getRoomDisplayLabel(room, includePhysical = false) {
+            const info = ROOMS.find(r => r.id === room.type);
+            const physical = info ? info.name : room.type;
+            const setup = room.soldAs || getDefaultRoomSetup(room.type);
+            if (includePhysical) {
+                return setup === getDefaultRoomSetup(room.type) ? physical : `${physical} (as ${setup})`;
+            }
+            if (setup === 'Full Villa') return 'Full Villa';
+            return `${setup} room`;
+        }
         function getDefaultTxnDateForSelectedMonth() {
             const today = getLocalYMD(new Date());
             const selectedMonth = getSelectedMonthKey();
@@ -592,6 +650,70 @@
                 desc: item && item.desc ? item.desc : '',
                 amount: item && item.amount != null ? item.amount : 0
             }));
+        }
+        function normalizePaymentHistory(entries) {
+            if (!Array.isArray(entries)) return [];
+            return entries
+                .filter(item => item && item.amount != null)
+                .map((item, idx) => ({
+                    id: item.id ? String(item.id) : `pay_${Date.now()}_${idx}`,
+                    date: (typeof item.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.date)) ? item.date : getLocalYMD(new Date()),
+                    amount: parseFloat(item.amount) || 0,
+                    note: item.note || ''
+                }));
+        }
+        function getBookingPaymentHistory(booking) {
+            return normalizePaymentHistory(booking && booking.paymentHistory);
+        }
+        function getBookingCollectedTotal(booking) {
+            const paymentHistory = getBookingPaymentHistory(booking);
+            if (paymentHistory.length > 0) {
+                return paymentHistory.reduce((sum, payment) => sum + (parseFloat(payment.amount) || 0), 0);
+            }
+            return parseFloat((booking && booking.advance) || 0) || 0;
+        }
+        function getBookingCollectedForMonth(booking, monthKey) {
+            const paymentHistory = getBookingPaymentHistory(booking);
+            if (paymentHistory.length > 0) {
+                return paymentHistory.reduce((sum, payment) => {
+                    if (getMonthKey(payment.date) === monthKey) return sum + (parseFloat(payment.amount) || 0);
+                    return sum;
+                }, 0);
+            }
+            if (booking && booking.range && booking.range[0] && booking.range[0].startsWith(monthKey)) {
+                return parseFloat(booking.advance || 0) || 0;
+            }
+            return 0;
+        }
+        function syncBookingPaymentHistory(existingBooking, nextAdvance) {
+            const today = getLocalYMD(new Date());
+            const paymentHistory = getBookingPaymentHistory(existingBooking);
+            if (paymentHistory.length === 0) {
+                const legacyAdvance = parseFloat((existingBooking && existingBooking.advance) || 0) || 0;
+                if (legacyAdvance > 0) {
+                    paymentHistory.push({
+                        id: `pay_legacy_${Date.now()}`,
+                        date: (existingBooking && existingBooking.range && existingBooking.range[0]) || today,
+                        amount: legacyAdvance,
+                        note: 'Legacy advance'
+                    });
+                }
+            }
+            const previousCollected = paymentHistory.length > 0
+                ? paymentHistory.reduce((sum, payment) => sum + (parseFloat(payment.amount) || 0), 0)
+                : (parseFloat((existingBooking && existingBooking.advance) || 0) || 0);
+            const targetAdvance = parseFloat(nextAdvance || 0) || 0;
+            const delta = targetAdvance - previousCollected;
+            const updated = [...paymentHistory];
+            if (delta !== 0) {
+                updated.push({
+                    id: `pay_${Date.now()}`,
+                    date: today,
+                    amount: delta,
+                    note: delta > 0 ? 'Advance added' : 'Advance reduced'
+                });
+            }
+            return normalizePaymentHistory(updated);
         }
         
         document.addEventListener('DOMContentLoaded', () => {
@@ -745,14 +867,28 @@
             ROOMS.forEach(r => {
                 cont.innerHTML += `<div class="room-select-chip" onclick="toggleInquiryRoomChip(this)" data-room-id="${r.id}">${r.name}</div>`;
             });
-            document.getElementById('inquiryDate').value = getLocalYMD(new Date());
-            document.getElementById('inquiryNights').value = 1;
+            const start = new Date();
+            const end = new Date(start);
+            end.setDate(end.getDate() + 1);
+            document.getElementById('inquiryStartDate').value = getLocalYMD(start);
+            document.getElementById('inquiryEndDate').value = getLocalYMD(end);
+            renderInquiryRoomUseOptions();
             updateInquiryEstimate();
             openModal('inquiryShareModal');
         }
 
         function toggleInquiryRoomChip(el) {
+            const roomId = el.getAttribute('data-room-id');
+            const willSelect = !el.classList.contains('selected');
             el.classList.toggle('selected');
+            if (willSelect && roomId === 'Full Villa') {
+                document.querySelectorAll('#inquiryRoomChips .room-select-chip').forEach(chip => {
+                    if (chip !== el) chip.classList.remove('selected');
+                });
+            } else if (willSelect && roomId !== 'Full Villa') {
+                document.querySelector('#inquiryRoomChips .room-select-chip[data-room-id="Full Villa"]')?.classList.remove('selected');
+            }
+            renderInquiryRoomUseOptions();
             updateInquiryEstimate();
         }
 
@@ -760,29 +896,74 @@
             const selected = [];
             document.querySelectorAll('#inquiryRoomChips .room-select-chip.selected').forEach(chip => {
                 const roomId = chip.getAttribute('data-room-id');
-                if (roomId) selected.push({ type: roomId, count: 1 });
+                const setupSelect = document.querySelector(`#inquiryRoomUseOptions select[data-room-id="${roomId}"]`);
+                if (roomId) selected.push({ type: roomId, count: 1, soldAs: setupSelect?.value || getDefaultRoomSetup(roomId) });
             });
             return selected;
         }
 
+        function renderRoomUseOptions(containerId, wrapperId, rooms, changeHandler) {
+            const container = document.getElementById(containerId);
+            const wrapper = document.getElementById(wrapperId);
+            if (!container || !wrapper) return;
+            const previous = {};
+            container.querySelectorAll('select[data-room-id]').forEach(select => previous[select.dataset.roomId] = select.value);
+            container.innerHTML = '';
+            rooms.forEach(room => {
+                const options = getRoomSetupOptions(room.type);
+                const selectedSetup = previous[room.type] || room.soldAs || getDefaultRoomSetup(room.type);
+                const info = ROOMS.find(r => r.id === room.type);
+                container.innerHTML += `<div class="room-use-row">
+                    <div><div class="room-use-name">${info ? info.name : room.type}</div><div class="room-use-hint">Physical room remains reserved</div></div>
+                    <select class="input-field" data-room-id="${room.type}" onchange="${changeHandler}">
+                        ${options.map(option => `<option value="${option}" ${option === selectedSetup ? 'selected' : ''}>Use as ${option}</option>`).join('')}
+                    </select>
+                </div>`;
+            });
+            wrapper.style.display = rooms.length ? 'block' : 'none';
+        }
+
+        function renderInquiryRoomUseOptions() {
+            const rooms = Array.from(document.querySelectorAll('#inquiryRoomChips .room-select-chip.selected'))
+                .map(chip => ({ type: chip.getAttribute('data-room-id') }))
+                .filter(room => room.type);
+            renderRoomUseOptions('inquiryRoomUseOptions', 'inquiryRoomUseDiv', rooms, 'updateInquiryEstimate()');
+        }
+
+        function getInquiryNights() {
+            const start = document.getElementById('inquiryStartDate')?.value;
+            const end = document.getElementById('inquiryEndDate')?.value;
+            if (!start || !end || end <= start) return 0;
+            return Math.round((new Date(end) - new Date(start)) / 86400000);
+        }
+
+        function updateInquiryDateRange() {
+            const startInput = document.getElementById('inquiryStartDate');
+            const endInput = document.getElementById('inquiryEndDate');
+            if (startInput?.value && (!endInput?.value || endInput.value <= startInput.value)) {
+                const end = new Date(startInput.value);
+                end.setDate(end.getDate() + 1);
+                endInput.value = getLocalYMD(end);
+            }
+            updateInquiryEstimate();
+        }
+
         function getInquiryRoomNightlyTotal(rooms, dateStr) {
             return (rooms || []).reduce((sum, room) => {
-                return sum + (getInquiryRoomUnitRate(room.type, dateStr) * (parseInt(room.count, 10) || 1));
+                return sum + (getInquiryRoomUnitRate(room, dateStr) * (parseInt(room.count, 10) || 1));
             }, 0);
         }
 
-        function getInquiryRoomUnitRate(roomType, dateStr) {
-            const nights = Math.max(1, parseInt(document.getElementById('inquiryNights')?.value || '1', 10) || 1);
-            const inquiryDate = dateStr || document.getElementById('inquiryDate')?.value || getLocalYMD(new Date());
-            return getNightlyRoomRate(roomType, inquiryDate, nights);
+        function getInquiryRoomUnitRate(room, dateStr) {
+            const nights = Math.max(1, getInquiryNights());
+            const inquiryDate = dateStr || document.getElementById('inquiryStartDate')?.value || getLocalYMD(new Date());
+            return getRoomSetupRate(room, inquiryDate, nights);
         }
 
         function updateInquiryEstimate() {
-            const nightsInput = document.getElementById('inquiryNights');
-            if (!nightsInput) return;
             const rooms = getSelectedInquiryRooms();
-            const nights = Math.max(1, parseInt(nightsInput.value || '1', 10) || 1);
-            const inquiryDate = document.getElementById('inquiryDate')?.value || getLocalYMD(new Date());
+            const nights = getInquiryNights();
+            const inquiryDate = document.getElementById('inquiryStartDate')?.value || getLocalYMD(new Date());
             const total = getInquiryRoomNightlyTotal(rooms, inquiryDate) * nights;
             const totalEl = document.getElementById('inquiryTotalDisplay');
             if (totalEl) totalEl.innerText = `Rs ${total.toLocaleString('en-US')}`;
@@ -1147,6 +1328,7 @@
 
             const chipContainer = document.getElementById('roomChipsContainer');
             chipContainer.innerHTML = '';
+            document.getElementById('bookingRoomUseOptions').innerHTML = '';
 
             const lockRooms = state.bookingRoomsLocked && !editData;
             document.getElementById('roomSelectDiv').style.display = lockRooms ? 'none' : 'block';
@@ -1158,6 +1340,7 @@
                 chipContainer.innerHTML += `<div class="room-select-chip ${(selectedByEdit || selectedByFilter || selectedByPicker || selectedByLocked) ? 'selected' : ''}" data-room-id="${r.id}" onclick="toggleRoomChip(this)">${r.name}</div>`;
             });
 
+            renderBookingRoomUseOptions(editData ? editData.rooms : null);
             refreshRateOverrideForSelection();
             if (!editData && !lockRooms) {
                 state.roomPickerSelection = [];
@@ -1187,11 +1370,34 @@
             openBookingModal(false, state.viewBooking);
         }
 
+        function changeBookingRooms() {
+            editBooking();
+            setTimeout(() => document.getElementById('roomSelectDiv')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+        }
+
+        function renderBookingRoomUseOptions(seedRooms = null) {
+            const existing = {};
+            document.querySelectorAll('#bookingRoomUseOptions select[data-room-id]').forEach(select => existing[select.dataset.roomId] = select.value);
+            (seedRooms || []).forEach(room => existing[room.type] = room.soldAs || getDefaultRoomSetup(room.type));
+            const selectedTypes = Array.from(document.querySelectorAll('#roomChipsContainer .room-select-chip.selected'))
+                .map(chip => chip.getAttribute('data-room-id'))
+                .filter(Boolean);
+            if (selectedTypes.length === 0 && state.bookingRoomsLocked) selectedTypes.push(...state.lockedBookingRooms);
+            const rooms = selectedTypes.map(type => ({ type, soldAs: existing[type] || getDefaultRoomSetup(type) }));
+            renderRoomUseOptions('bookingRoomUseOptions', 'bookingRoomUseDiv', rooms, 'handleBookingRoomSetupChange()');
+        }
+
+        function handleBookingRoomSetupChange() {
+            updateGuestCountDefault();
+            calcTotal();
+        }
+
         function getSelectedModalRooms() {
             const rooms = [];
             document.querySelectorAll('#roomChipsContainer .room-select-chip.selected').forEach(c => {
                 const roomId = c.getAttribute('data-room-id');
-                if (roomId) rooms.push({ type: roomId, count: 1 });
+                const setupSelect = document.querySelector(`#bookingRoomUseOptions select[data-room-id="${roomId}"]`);
+                if (roomId) rooms.push({ type: roomId, count: 1, soldAs: setupSelect?.value || getDefaultRoomSetup(roomId) });
             });
             return rooms;
         }
@@ -1200,29 +1406,17 @@
             const direct = getSelectedModalRooms();
             if (direct.length > 0) return direct;
             if (state.bookingRoomsLocked && state.lockedBookingRooms.length > 0) {
-                return state.lockedBookingRooms.map(type => ({ type, count: 1 }));
+                return state.lockedBookingRooms.map(type => {
+                    const setupSelect = document.querySelector(`#bookingRoomUseOptions select[data-room-id="${type}"]`);
+                    return { type, count: 1, soldAs: setupSelect?.value || getDefaultRoomSetup(type) };
+                });
             }
             return [];
         }
 
         function refreshRateOverrideForSelection() {
             const rateDiv = document.getElementById('rateOverrideDiv');
-            const rateSel = document.getElementById('rateSelect');
-            const selectedRooms = getEffectiveSelectedModalRooms();
-            const checkInDate = state.selection[0] || getLocalYMD(new Date());
-            const activeRates = getRateCardForDate(checkInDate);
-
             rateDiv.style.display = 'none';
-            if (state.filterRoom === 'All' || selectedRooms.length !== 1) return;
-
-            const selectedType = selectedRooms[0].type;
-            if (selectedType.includes('Triple')) {
-                rateDiv.style.display = 'block';
-                rateSel.innerHTML = `<option value="${activeRates['Triple Room 1']}">Standard (${activeRates['Triple Room 1']})</option><option value="${activeRates['Double Room']}">As Double (${activeRates['Double Room']})</option>`;
-            } else if (selectedType === 'Family Room') {
-                rateDiv.style.display = 'block';
-                rateSel.innerHTML = `<option value="${activeRates['Family Room']}">Standard (${activeRates['Family Room']})</option><option value="${activeRates['Triple Room 1']}">As Triple (${activeRates['Triple Room 1']})</option><option value="${activeRates['Double Room']}">As Double (${activeRates['Double Room']})</option>`;
-            }
         }
 
         function getRoomDefaultGuestCount(roomType) {
@@ -1241,7 +1435,7 @@
                 guestCountInput.value = '2';
                 return;
             }
-            const totalGuests = rooms.reduce((sum, room) => sum + getRoomDefaultGuestCount(room.type), 0);
+            const totalGuests = rooms.reduce((sum, room) => sum + getRoomSetupGuestCount(room), 0);
             guestCountInput.value = String(totalGuests || 2);
         }
 
@@ -1261,6 +1455,7 @@
                 if (villaChip) villaChip.classList.remove('selected');
             }
 
+            renderBookingRoomUseOptions();
             refreshRateOverrideForSelection();
             updateGuestCountDefault();
             calcTotal();
@@ -1273,18 +1468,9 @@
 
             const selectedRooms = getEffectiveSelectedModalRooms();
             selectedRooms.forEach(room => {
-                const price = getNightlyRoomRate(room.type, checkInDate, nights);
+                const price = getRoomSetupRate(room, checkInDate, nights);
                 total += price * nights;
             });
-
-            if(
-                state.filterRoom !== 'All' &&
-                selectedRooms.length === 1 &&
-                document.getElementById('rateOverrideDiv').style.display !== 'none'
-            ) {
-                const override = parseInt(document.getElementById('rateSelect').value, 10);
-                if (!isNaN(override)) total = override * nights;
-            }
 
             document.getElementById('totalAmount').value = total;
             updateBalance();
@@ -1301,6 +1487,11 @@
         function saveBooking() {
             const guestPhone = document.getElementById('guestPhone').value.trim();
             if(!guestPhone) return alert('Guest contact number required');
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            if (!startDate || !endDate || endDate <= startDate || state.selection.length === 0) {
+                return alert('Select a valid check-in and check-out date');
+            }
             const total = parseInt(document.getElementById('totalAmount').value) || 0;
             const advance = parseInt(document.getElementById('advance').value) || 0;
             
@@ -1325,7 +1516,15 @@
                 total: total, 
                 range: [...state.selection], 
                 notes: document.getElementById('bookingNotes').value,
-                source: document.getElementById('bookingSource').value
+                source: document.getElementById('bookingSource').value,
+                paymentHistory: state.editingId
+                    ? syncBookingPaymentHistory(state.viewBooking, advance)
+                    : (advance > 0 ? [{
+                        id: `pay_${Date.now()}`,
+                        date: getLocalYMD(new Date()),
+                        amount: advance,
+                        note: 'Advance received'
+                    }] : [])
             };
 
             state.selection.forEach(d => {
@@ -1429,7 +1628,7 @@
             const d = new Date(b.range[b.range.length-1]); d.setDate(d.getDate()+1);
             const bal = parseFloat(b.total) - parseFloat(b.advance);
             const settleBtn = bal > 0 ? `<button onclick="settleBill('${b.id}')" style="background:var(--success); color:white; border:none; padding:5px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.85rem; margin-left:10px;">Settle Now</button>` : '';
-            dDiv.innerHTML = `<div style="background:var(--bg); padding:15px; border-radius:12px;"><div style="font-size:1.2rem; font-weight:700;">${b.name}</div><div style="color:var(--text-light); margin-top:5px;">${b.rooms.map(r=>r.type).join(', ')}</div>${b.guestPhone ? `<div style="font-size:0.85rem; margin-top:5px; color:var(--text-light);">📞 ${b.guestPhone}</div>` : ''}${b.source ? `<div style="font-size:0.8rem; margin-top:5px; color:var(--primary); font-weight:600;">Via ${b.source}</div>` : ''}</div>${b.notes ? `<div style="background:#FFF3E0; color:#E65100; padding:10px; margin-top:10px; border-radius:8px; font-size:0.9rem;">📝 ${b.notes}</div>` : ''}<div style="margin-top:15px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-in</span> <b>${b.range[0]} (2 PM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-out</span> <b>${getLocalYMD(d)} (11 AM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; font-size:1.1rem; font-weight:700; align-items:center;"><span>Balance</span> <div style="display:flex; align-items:center;"><span style="color:${bal > 0 ? 'var(--danger)':'var(--success)'}">Rs ${bal}</span>${settleBtn}</div></div><div style="margin-top:5px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Total Bill</span> <span>Rs ${b.total}</span></div><div style="margin-top:0px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Advance</span> <span>Rs ${b.advance}</span></div>`;
+            dDiv.innerHTML = `<div style="background:var(--bg); padding:15px; border-radius:12px;"><div style="font-size:1.2rem; font-weight:700;">${b.name}</div><div style="color:var(--text-light); margin-top:5px;">${b.rooms.map(r=>getRoomDisplayLabel(r, true)).join(', ')}</div>${b.guestPhone ? `<div style="font-size:0.85rem; margin-top:5px; color:var(--text-light);">📞 ${b.guestPhone}</div>` : ''}${b.source ? `<div style="font-size:0.8rem; margin-top:5px; color:var(--primary); font-weight:600;">Via ${b.source}</div>` : ''}</div>${b.notes ? `<div style="background:#FFF3E0; color:#E65100; padding:10px; margin-top:10px; border-radius:8px; font-size:0.9rem;">📝 ${b.notes}</div>` : ''}<div style="margin-top:15px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-in</span> <b>${b.range[0]} (2 PM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-out</span> <b>${getLocalYMD(d)} (11 AM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; font-size:1.1rem; font-weight:700; align-items:center;"><span>Balance</span> <div style="display:flex; align-items:center;"><span style="color:${bal > 0 ? 'var(--danger)':'var(--success)'}">Rs ${bal}</span>${settleBtn}</div></div><div style="margin-top:5px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Total Bill</span> <span>Rs ${b.total}</span></div><div style="margin-top:0px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Advance</span> <span>Rs ${b.advance}</span></div>`;
             openModal('detailsModal');
             document.getElementById('btnWhatsapp').onclick = () => {
                 window.open(`https://wa.me/?text=${encodeURIComponent(buildWhatsAppBookingText(b))}`);
@@ -1438,19 +1637,7 @@
 
         function formatRoomLineForShare(room) {
             const count = parseInt(room.count, 10) || 1;
-            let label = room.type || '';
-
-            if (room.type === 'Double Room') label = 'Double room';
-            else if (room.type === 'Triple Room 1' || room.type === 'Triple Room 2') label = 'Triple room';
-            else if (room.type === 'Family Room') label = 'Family room';
-            else if (room.type === 'Full Villa') label = 'Full Villa';
-            else {
-                const rInfo = ROOMS.find(r => r.id === room.type);
-                label = rInfo ? rInfo.name : room.type;
-                if (!/room$/i.test(label) && room.type !== 'Full Villa') label += ' room';
-            }
-
-            return `${count} ${label}`;
+            return `${count} ${getRoomDisplayLabel(room)}`;
         }
 
         function formatDateLineForShare(b) {
@@ -1492,8 +1679,8 @@
         }
 
         function formatInquiryRoomRateLine(room) {
-            const inquiryDate = document.getElementById('inquiryDate')?.value || getLocalYMD(new Date());
-            const unitRate = getInquiryRoomUnitRate(room.type, inquiryDate);
+            const inquiryDate = document.getElementById('inquiryStartDate')?.value || getLocalYMD(new Date());
+            const unitRate = getInquiryRoomUnitRate(room, inquiryDate);
             if (!unitRate) return `${formatRoomLineForShare(room)} - Rate on request`;
             return `${formatRoomLineForShare(room)} - ${formatRs(unitRate)} per night`;
         }
@@ -1511,15 +1698,16 @@
         }
 
         function buildInquiryShareText() {
-            const date = document.getElementById('inquiryDate')?.value;
-            const nights = Math.max(1, parseInt(document.getElementById('inquiryNights')?.value || '1', 10) || 1);
+            const date = document.getElementById('inquiryStartDate')?.value;
+            const checkout = document.getElementById('inquiryEndDate')?.value;
+            const nights = getInquiryNights();
             const rooms = getSelectedInquiryRooms();
-            if (!date) { alert('Select a requested date'); return ''; }
+            if (!date || !checkout || nights < 1) { alert('Select a valid check-in and check-out date'); return ''; }
             if (rooms.length === 0) { alert('Select room(s) or villa'); return ''; }
 
             const total = getInquiryRoomNightlyTotal(rooms, date) * nights;
             const roomLines = rooms.map(formatInquiryRoomRateLine).join('\n');
-            const dateLines = formatInquiryDatesList(date, nights);
+            const dateLines = `${formatDateDMY(date)} to ${formatDateDMY(checkout)} (${nights} night${nights === 1 ? '' : 's'})`;
 
             return [
                 'Hello and a warm welcome from Lake Breeze Villa!',
@@ -1562,7 +1750,27 @@
             Object.keys(state.bookings).forEach(d => {
                 state.bookings[d] = state.bookings[d].map(b => {
                     if(String(b.id) === String(id)) {
+                        const currentCollected = getBookingCollectedTotal(b);
+                        const settlementAmount = (parseFloat(b.total) || 0) - currentCollected;
                         b.advance = b.total; 
+                        b.paymentHistory = getBookingPaymentHistory(b);
+                        if (b.paymentHistory.length === 0 && currentCollected > 0) {
+                            b.paymentHistory.push({
+                                id: `pay_legacy_${Date.now()}`,
+                                date: (b.range && b.range[0]) || getLocalYMD(new Date()),
+                                amount: currentCollected,
+                                note: 'Legacy advance'
+                            });
+                        }
+                        if (settlementAmount > 0) {
+                            b.paymentHistory.push({
+                                id: `pay_${Date.now()}`,
+                                date: getLocalYMD(new Date()),
+                                amount: settlementAmount,
+                                note: 'Balance settled'
+                            });
+                            b.paymentHistory = normalizePaymentHistory(b.paymentHistory);
+                        }
                         updatedBooking = b; 
                         found = true;
                     }
@@ -1646,14 +1854,18 @@
             const m = getLocalYMD(state.viewDate).slice(0, 7);
             const monthName = state.viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
             
-            let revenue = 0; let mealIncome = 0; let collected = 0; let expense = 0; let seen = new Set();
+            let bookingValue = 0; let roomCashIn = 0; let mealIncome = 0; let expense = 0; let outstanding = 0; let seen = new Set();
             
-            // ACCURATE REVENUE RECOGNITION: Count booking if Check-in Date is in this month
+            // Cash-basis summary: room cash is counted in the month the payment was received.
             Object.values(state.bookings).flat().forEach(b => {
                 if(!seen.has(b.id) && b.range[0].startsWith(m)) { 
                     seen.add(b.id); 
-                    revenue += parseFloat(b.total || 0); 
-                    collected += parseFloat(b.advance || 0); 
+                    bookingValue += parseFloat(b.total || 0);
+                    outstanding += Math.max(0, (parseFloat(b.total || 0) - getBookingCollectedTotal(b)));
+                }
+                if(!seen.has(`cash_${b.id}`)) {
+                    seen.add(`cash_${b.id}`);
+                    roomCashIn += getBookingCollectedForMonth(b, m);
                 }
             });
 
@@ -1661,12 +1873,12 @@
             state.meals.forEach(e => { if(e.date.startsWith(m)) mealIncome += parseFloat(e.amount); });
             
             document.getElementById('menuMonthName').innerText = `(${monthName})`;
-            document.getElementById('menuRevenue').innerText = `Rs ${revenue.toLocaleString()}`;
+            document.getElementById('menuRevenue').innerText = `Rs ${roomCashIn.toLocaleString()}`;
             document.getElementById('menuMeals').innerText = `Rs ${mealIncome.toLocaleString()}`;
-            document.getElementById('menuCollected').innerText = `Rs ${collected.toLocaleString()}`;
-            document.getElementById('menuPending').innerText = `Rs ${(revenue - collected).toLocaleString()}`;
+            document.getElementById('menuCollected').innerText = `Rs ${bookingValue.toLocaleString()}`;
+            document.getElementById('menuPending').innerText = `Rs ${outstanding.toLocaleString()}`;
             document.getElementById('menuExpenses').innerText = `Rs ${expense.toLocaleString()}`;
-            const profit = (revenue + mealIncome) - expense;
+            const profit = (roomCashIn + mealIncome) - expense;
             document.getElementById('menuProfitFinal').innerText = `Rs ${profit.toLocaleString()}`;
             document.getElementById('menuProfitFinal').style.color = profit >= 0 ? 'var(--primary)' : 'var(--danger)';
         }
