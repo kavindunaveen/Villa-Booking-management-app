@@ -1736,18 +1736,6 @@
             return `${formatRoomLineForShare(room)} - ${formatRs(unitRate)} per night`;
         }
 
-        function formatInquiryDatesList(date, nights) {
-            const count = Math.max(1, parseInt(nights, 10) || 1);
-            const start = new Date(date);
-            const lines = [];
-            for (let i = 0; i < count; i++) {
-                const current = new Date(start);
-                current.setDate(start.getDate() + i);
-                lines.push(`${formatDateDMY(getLocalYMD(current))} night`);
-            }
-            return lines.join('\n');
-        }
-
         function buildInquiryShareText() {
             const date = document.getElementById('inquiryStartDate')?.value;
             const checkout = document.getElementById('inquiryEndDate')?.value;
@@ -1758,25 +1746,26 @@
 
             const total = getInquiryRoomNightlyTotal(rooms, date) * nights;
             const roomLines = rooms.map(formatInquiryRoomRateLine).join('\n');
-            const dateLines = `${formatDateDMY(date)} to ${formatDateDMY(checkout)} (${nights} night${nights === 1 ? '' : 's'})`;
 
             return [
-                'Hello and a warm welcome from Lake Breeze Villa!',
+                'Hello from Lake Breeze Villa!',
                 '',
-                'Thank you for your interest in staying with us. We are delighted to host you at our cozy villa in the heart of Anuradhapura.',
+                'Thank you for your interest in staying with us. Please find your requested booking details below.',
                 '',
-                'Requested Room Type(s) & Rate:',
+                '*Stay Details*',
+                `Check-in: ${formatDateDMY(date)} at 2.00 PM`,
+                `Check-out: ${formatDateDMY(checkout)} at 11.00 AM`,
+                `Duration: ${nights} night${nights === 1 ? '' : 's'}`,
                 '',
+                '*Requested Room(s) & Rates*',
                 roomLines,
                 '',
-                `Estimated total for selected room(s): ${formatRs(total)}`,
+                `*Estimated Total: ${formatRs(total)}*`,
                 '',
-                'Requested Booking Date(s):',
-                dateLines,
+                '*Booking Confirmation*',
                 'To confirm your booking, we kindly request a 30% advance payment.',
                 '',
-                'Bank Details for Advance Payment:',
-                '',
+                '*Bank Details*',
                 'HNB Anuradhapura',
                 'Name - PREMATHILAKA P K N',
                 'Account Number - 010020514010',
@@ -1784,6 +1773,7 @@
                 'Once the payment is made, please share the payment slip or confirmation with us so we can finalize your reservation.',
                 '',
                 'Looking forward to welcoming you soon!',
+                '',
                 'Warm regards,',
                 'Lake Breeze Villa'
             ].join('\n');
