@@ -184,6 +184,10 @@
         .finance-note {
             font-size: 0.76rem; color: var(--text-light); line-height: 1.4; text-align: left; margin-top: 8px;
         }
+        .finance-progress {
+            height: 8px; background: var(--border); border-radius: 999px; overflow: hidden; margin-top: 8px;
+        }
+        .finance-progress-bar { height: 100%; background: var(--success); border-radius: inherit; width: 0; }
 
         /* 4. MENU SCREEN */
         .menu-list { background: var(--card); border-radius: 16px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
@@ -349,19 +353,24 @@
                 <div class="finance-section">
                     <div class="finance-section-title">This Month's Bookings</div>
                     <div class="stat-row"><span>Number of Bookings</span><span id="menuBookingCount" style="font-weight:700">0</span></div>
+                    <div class="stat-row"><span>Booked Nights</span><span id="menuBookedNights" style="font-weight:700">0</span></div>
                     <div class="stat-row"><span>Total Booking Value</span><span id="menuCollected" style="font-weight:700">Rs 0</span></div>
-                    <div class="stat-row"><span>Advance Received</span><span id="menuAdvances" style="font-weight:700; color:var(--success)">Rs 0</span></div>
+                    <div class="stat-row"><span>Amount Received</span><span id="menuAdvances" style="font-weight:700; color:var(--success)">Rs 0</span></div>
                     <div class="stat-row"><span>Remaining Balances</span><span id="menuPending" style="font-weight:700; color:var(--danger)">Rs 0</span></div>
+                    <div class="stat-row"><span>Completed Stay Balances</span><span id="menuOverdueBalances" style="color:var(--danger)">Rs 0</span></div>
+                    <div class="stat-row"><span>Upcoming Stay Balances</span><span id="menuUpcomingBalances" style="color:var(--text-light)">Rs 0</span></div>
+                    <div class="stat-row finance-total"><span>Collection Progress</span><span id="menuCollectionRate">0%</span></div>
+                    <div class="finance-progress"><div id="menuCollectionProgressBar" class="finance-progress-bar"></div></div>
                 </div>
 
                 <div class="finance-section">
                     <div class="finance-section-title">Income Summary</div>
-                    <div class="stat-row"><span>Advance Received</span><span id="menuIncomeAdvances" style="color:var(--success)">Rs 0</span></div>
+                    <div class="stat-row"><span>Booking Amount Received</span><span id="menuIncomeAdvances" style="color:var(--success)">Rs 0</span></div>
                     <div class="stat-row"><span>Meal Income</span><span id="menuMeals" style="color:var(--success)">Rs 0</span></div>
                     <div class="stat-row"><span>Expenses</span><span id="menuExpenses" style="color:var(--danger)">Rs 0</span></div>
-                    <div class="stat-row finance-total" style="font-size:1.05rem;"><span>Net Income</span><span id="menuProfitFinal" style="font-weight:800; color:var(--primary)">Rs 0</span></div>
+                    <div class="stat-row finance-total" style="font-size:1.05rem;"><span>Estimated Cash Profit</span><span id="menuProfitFinal" style="font-weight:800; color:var(--primary)">Rs 0</span></div>
                 </div>
-                <div class="finance-note">Net Income = Advance Received + Meal Income - Expenses</div>
+                <div class="finance-note">Estimated Cash Profit = Booking Amount Received + Meal Income - Expenses</div>
             </div>
 
             <div class="menu-list">
@@ -1896,33 +1905,48 @@
             const m = getLocalYMD(state.viewDate).slice(0, 7);
             const monthName = state.viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
             
-            let bookingCount = 0; let bookingValue = 0; let advancesReceived = 0;
-            let mealIncome = 0; let expense = 0; let outstanding = 0; let seen = new Set();
+            let bookingCount = 0; let bookedNights = 0; let bookingValue = 0; let amountReceived = 0;
+            let mealIncome = 0; let expense = 0; let outstanding = 0;
+            let overdueBalances = 0; let upcomingBalances = 0; let seen = new Set();
+            const today = getLocalYMD(new Date());
             
             // Monthly booking figures all use the booking check-in month.
             Object.values(state.bookings).flat().forEach(b => {
                 if(!seen.has(b.id) && b.range[0].startsWith(m)) { 
                     seen.add(b.id); 
                     bookingCount += 1;
+                    bookedNights += Array.isArray(b.range) ? b.range.length : 0;
                     bookingValue += parseFloat(b.total || 0);
                     const collected = getBookingCollectedTotal(b);
-                    advancesReceived += collected;
-                    outstanding += Math.max(0, (parseFloat(b.total || 0) - collected));
+                    const balance = Math.max(0, (parseFloat(b.total || 0) - collected));
+                    amountReceived += collected;
+                    outstanding += balance;
+                    const checkout = Array.isArray(b.range) && b.range.length > 0
+                        ? getLocalYMD(new Date(new Date(b.range[b.range.length - 1]).setDate(new Date(b.range[b.range.length - 1]).getDate() + 1)))
+                        : b.range[0];
+                    if (checkout <= today) overdueBalances += balance;
+                    else upcomingBalances += balance;
                 }
             });
 
             state.expenses.forEach(e => { if(e.date.startsWith(m)) expense += parseFloat(e.amount); });
             state.meals.forEach(e => { if(e.date.startsWith(m)) mealIncome += parseFloat(e.amount); });
             
+            const collectionRate = bookingValue > 0 ? Math.round((amountReceived / bookingValue) * 100) : 0;
             document.getElementById('menuMonthName').innerText = `(${monthName})`;
             document.getElementById('menuBookingCount').innerText = bookingCount.toLocaleString();
-            document.getElementById('menuAdvances').innerText = `Rs ${advancesReceived.toLocaleString()}`;
-            document.getElementById('menuIncomeAdvances').innerText = `Rs ${advancesReceived.toLocaleString()}`;
+            document.getElementById('menuBookedNights').innerText = bookedNights.toLocaleString();
+            document.getElementById('menuAdvances').innerText = `Rs ${amountReceived.toLocaleString()}`;
+            document.getElementById('menuIncomeAdvances').innerText = `Rs ${amountReceived.toLocaleString()}`;
             document.getElementById('menuMeals').innerText = `Rs ${mealIncome.toLocaleString()}`;
             document.getElementById('menuCollected').innerText = `Rs ${bookingValue.toLocaleString()}`;
             document.getElementById('menuPending').innerText = `Rs ${outstanding.toLocaleString()}`;
+            document.getElementById('menuOverdueBalances').innerText = `Rs ${overdueBalances.toLocaleString()}`;
+            document.getElementById('menuUpcomingBalances').innerText = `Rs ${upcomingBalances.toLocaleString()}`;
+            document.getElementById('menuCollectionRate').innerText = `${collectionRate}%`;
+            document.getElementById('menuCollectionProgressBar').style.width = `${Math.min(100, collectionRate)}%`;
             document.getElementById('menuExpenses').innerText = `Rs ${expense.toLocaleString()}`;
-            const profit = advancesReceived + mealIncome - expense;
+            const profit = amountReceived + mealIncome - expense;
             document.getElementById('menuProfitFinal').innerText = `Rs ${profit.toLocaleString()}`;
             document.getElementById('menuProfitFinal').style.color = profit >= 0 ? 'var(--primary)' : 'var(--danger)';
         }
