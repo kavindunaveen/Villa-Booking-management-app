@@ -347,25 +347,21 @@
                 </div>
                 
                 <div class="finance-section">
-                    <div class="finance-section-title">Booking Performance</div>
-                    <div class="stat-row"><span>Bookings Checking In</span><span id="menuBookingCount" style="font-weight:700">0</span></div>
-                    <div class="stat-row"><span>Gross Booking Value</span><span id="menuCollected" style="font-weight:700">Rs 0</span></div>
-                    <div class="stat-row"><span>Payments Recorded</span><span id="menuCheckinCollected" style="color:var(--success)">Rs 0</span></div>
-                    <div class="stat-row"><span>Outstanding Receivables</span><span id="menuPending" style="color:var(--danger)">Rs 0</span></div>
-                    <div class="stat-row finance-total"><span>Collection Rate</span><span id="menuCollectionRate">0%</span></div>
+                    <div class="finance-section-title">This Month's Bookings</div>
+                    <div class="stat-row"><span>Number of Bookings</span><span id="menuBookingCount" style="font-weight:700">0</span></div>
+                    <div class="stat-row"><span>Total Booking Value</span><span id="menuCollected" style="font-weight:700">Rs 0</span></div>
+                    <div class="stat-row"><span>Advance Received</span><span id="menuAdvances" style="font-weight:700; color:var(--success)">Rs 0</span></div>
+                    <div class="stat-row"><span>Remaining Balances</span><span id="menuPending" style="font-weight:700; color:var(--danger)">Rs 0</span></div>
                 </div>
 
                 <div class="finance-section">
-                    <div class="finance-section-title">Cash Flow</div>
-                    <div class="stat-row"><span>Room Payments</span><span id="menuRevenue" style="color:var(--success)">Rs 0</span></div>
-                    <div class="stat-row"><span>Advance Payments</span><span id="menuAdvances" style="color:var(--success)">Rs 0</span></div>
-                    <div class="stat-row"><span>Other / Balance Payments</span><span id="menuBalancePayments" style="color:var(--success)">Rs 0</span></div>
+                    <div class="finance-section-title">Income Summary</div>
+                    <div class="stat-row"><span>Advance Received</span><span id="menuIncomeAdvances" style="color:var(--success)">Rs 0</span></div>
                     <div class="stat-row"><span>Meal Income</span><span id="menuMeals" style="color:var(--success)">Rs 0</span></div>
-                    <div class="stat-row finance-total"><span>Total Cash In</span><span id="menuTotalCashIn" style="color:var(--success)">Rs 0</span></div>
                     <div class="stat-row"><span>Expenses</span><span id="menuExpenses" style="color:var(--danger)">Rs 0</span></div>
-                    <div class="stat-row finance-total" style="font-size:1.05rem;"><span>Net Cash Flow</span><span id="menuProfitFinal" style="font-weight:800; color:var(--primary)">Rs 0</span></div>
+                    <div class="stat-row finance-total" style="font-size:1.05rem;"><span>Net Income</span><span id="menuProfitFinal" style="font-weight:800; color:var(--primary)">Rs 0</span></div>
                 </div>
-                <div id="menuFinanceNote" class="finance-note"></div>
+                <div class="finance-note">Net Income = Advance Received + Meal Income - Expenses</div>
             </div>
 
             <div class="menu-list">
@@ -1900,55 +1896,35 @@
             const m = getLocalYMD(state.viewDate).slice(0, 7);
             const monthName = state.viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
             
-            let bookingCount = 0; let bookingValue = 0; let checkinCollected = 0; let roomCashIn = 0;
-            let advancesReceived = 0; let mealIncome = 0; let expense = 0; let outstanding = 0;
-            let legacyRoomCash = 0; let seen = new Set();
+            let bookingCount = 0; let bookingValue = 0; let advancesReceived = 0;
+            let mealIncome = 0; let expense = 0; let outstanding = 0; let seen = new Set();
             
-            // Dated payment history uses the actual receipt month. Legacy payments have no receipt date,
-            // so they are attributed to the booking's check-in month and disclosed below the summary.
+            // Monthly booking figures all use the booking check-in month.
             Object.values(state.bookings).flat().forEach(b => {
                 if(!seen.has(b.id) && b.range[0].startsWith(m)) { 
                     seen.add(b.id); 
                     bookingCount += 1;
                     bookingValue += parseFloat(b.total || 0);
                     const collected = getBookingCollectedTotal(b);
-                    checkinCollected += collected;
+                    advancesReceived += collected;
                     outstanding += Math.max(0, (parseFloat(b.total || 0) - collected));
-                }
-                if(!seen.has(`cash_${b.id}`)) {
-                    seen.add(`cash_${b.id}`);
-                    const monthlyRoomCash = getBookingCollectedForMonth(b, m);
-                    roomCashIn += monthlyRoomCash;
-                    advancesReceived += getBookingAdvancesForMonth(b, m);
-                    if (getBookingPaymentHistory(b).length === 0 && b.range[0].startsWith(m)) {
-                        legacyRoomCash += monthlyRoomCash;
-                    }
                 }
             });
 
             state.expenses.forEach(e => { if(e.date.startsWith(m)) expense += parseFloat(e.amount); });
             state.meals.forEach(e => { if(e.date.startsWith(m)) mealIncome += parseFloat(e.amount); });
             
-            const totalCashIn = roomCashIn + mealIncome;
-            const collectionRate = bookingValue > 0 ? Math.round((checkinCollected / bookingValue) * 100) : 0;
             document.getElementById('menuMonthName').innerText = `(${monthName})`;
             document.getElementById('menuBookingCount').innerText = bookingCount.toLocaleString();
-            document.getElementById('menuRevenue').innerText = `Rs ${roomCashIn.toLocaleString()}`;
             document.getElementById('menuAdvances').innerText = `Rs ${advancesReceived.toLocaleString()}`;
-            document.getElementById('menuBalancePayments').innerText = `Rs ${(roomCashIn - advancesReceived).toLocaleString()}`;
+            document.getElementById('menuIncomeAdvances').innerText = `Rs ${advancesReceived.toLocaleString()}`;
             document.getElementById('menuMeals').innerText = `Rs ${mealIncome.toLocaleString()}`;
             document.getElementById('menuCollected').innerText = `Rs ${bookingValue.toLocaleString()}`;
-            document.getElementById('menuCheckinCollected').innerText = `Rs ${checkinCollected.toLocaleString()}`;
             document.getElementById('menuPending').innerText = `Rs ${outstanding.toLocaleString()}`;
-            document.getElementById('menuCollectionRate').innerText = `${collectionRate}%`;
-            document.getElementById('menuTotalCashIn').innerText = `Rs ${totalCashIn.toLocaleString()}`;
             document.getElementById('menuExpenses').innerText = `Rs ${expense.toLocaleString()}`;
-            const profit = totalCashIn - expense;
+            const profit = advancesReceived + mealIncome - expense;
             document.getElementById('menuProfitFinal').innerText = `Rs ${profit.toLocaleString()}`;
             document.getElementById('menuProfitFinal').style.color = profit >= 0 ? 'var(--primary)' : 'var(--danger)';
-            document.getElementById('menuFinanceNote').innerText = legacyRoomCash > 0
-                ? `Data note: Rs ${legacyRoomCash.toLocaleString()} of room payments has no recorded receipt date, so it is shown in the check-in month. New payments are reported using their actual received date.`
-                : 'Room payments are reported using their recorded received date.';
         }
 
     </script>
