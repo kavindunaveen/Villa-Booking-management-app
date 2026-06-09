@@ -1691,41 +1691,49 @@
             return `${count} ${getRoomDisplayLabel(room)}`;
         }
 
-        function formatDateLineForShare(b) {
-            const nights = Array.isArray(b.range) ? b.range.length : 0;
-            if (!nights || !b.range[0]) return '-';
-            if (nights === 1) return `${b.range[0]} night`;
-            const checkout = new Date(b.range[b.range.length - 1]);
-            checkout.setDate(checkout.getDate() + 1);
-            return `${b.range[0]} to ${getLocalYMD(checkout)} (${nights} nights)`;
-        }
-
         function buildWhatsAppBookingText(b) {
             const advance = parseFloat(b.advance) || 0;
             const balance = (parseFloat(b.total) || 0) - advance;
             const roomLines = (b.rooms || []).map(formatRoomLineForShare).join('\n') || '-';
             const guestPhone = (b.guestPhone || '').trim() || 'Not provided';
-            const guestCount = b.guests ? `Total guests: ${b.guests}` : '';
+            const guestCount = b.guests ? `Guests: ${b.guests}` : '';
+            const checkout = new Date(b.range[b.range.length - 1]);
+            checkout.setDate(checkout.getDate() + 1);
+            const nights = Array.isArray(b.range) ? b.range.length : 0;
 
             return [
-                `${advance > 0 ? `Advance ${formatRs(advance)} received.` : 'Advance not received yet.'}`,
-                'Booking Confirmed!',
+                '*Booking Confirmed - Lake Breeze Villa*',
                 '',
+                'Thank you for booking with us. Your reservation details are confirmed below.',
+                '',
+                '*Guest Details*',
                 `Guest: ${b.name || '-'}`,
-                `Guest Contact No: ${guestPhone}`,
-                '',
-                'Booked Room(s):',
+                `Contact No: ${guestPhone}`,
                 ...(guestCount ? [guestCount] : []),
+                '',
+                '*Stay Details*',
+                `Check-in: ${formatDateDMY(b.range[0])} at 2.00 PM`,
+                `Check-out: ${formatDateDMY(getLocalYMD(checkout))} at 11.00 AM`,
+                `Duration: ${nights} night${nights === 1 ? '' : 's'}`,
+                '',
+                '*Booked Room(s)*',
                 roomLines,
                 '',
-                `Stay Dates: ${formatDateLineForShare(b)}`,
+                '*Payment Summary*',
+                `Total Booking Value: ${formatRs(b.total)}`,
+                `Amount Received: ${formatRs(advance)}`,
+                `Remaining Balance: ${formatRs(balance)}`,
                 '',
-                `Balance: ${formatRs(balance)}`,
+                `${balance <= 0 ? '*Payment Status: Fully Paid*' : '*Payment Status: Balance Due*'}`,
                 '',
-                'Lake Breeze Villa Contact: 071 370 2074',
+                '*Contact & Location*',
+                'Lake Breeze Villa: 071 370 2074',
                 'Location: https://maps.app.goo.gl/E7mKR3UzTfT9p5ag9',
                 '',
-                'Thank you for booking with us'
+                'We look forward to welcoming you!',
+                '',
+                'Warm regards,',
+                'Lake Breeze Villa'
             ].join('\n');
         }
 
