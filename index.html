@@ -669,6 +669,31 @@
             if (setup === 'Full Villa') return 'Full Villa';
             return `${setup} room`;
         }
+        function getCalendarRoomSetupMeta(room) {
+            const setup = room.soldAs || getDefaultRoomSetup(room.type);
+            if (setup === 'Double') return { key: 'Double', label: 'Dbl', tagClass: 'tag-Double' };
+            if (setup === 'Triple') return { key: 'Triple', label: 'Tri', tagClass: 'tag-Triple' };
+            if (setup === 'Family') return { key: 'Family', label: 'Fam', tagClass: 'tag-Family' };
+            return { key: 'Villa', label: 'Vil', tagClass: 'tag-Villa' };
+        }
+        function buildCalendarRoomTags(bookings) {
+            const setupCounts = {};
+            (bookings || []).forEach(booking => {
+                (booking.rooms || []).forEach(room => {
+                    const meta = getCalendarRoomSetupMeta(room);
+                    if (!setupCounts[meta.key]) setupCounts[meta.key] = { ...meta, count: 0 };
+                    setupCounts[meta.key].count += parseInt(room.count, 10) || 1;
+                });
+            });
+            const tags = ['Double', 'Triple', 'Family', 'Villa']
+                .filter(key => setupCounts[key])
+                .map(key => {
+                    const item = setupCounts[key];
+                    const label = item.count > 1 ? `${item.count}x ${item.label}` : item.label;
+                    return `<div class="mini-tag ${item.tagClass}">${label}</div>`;
+                });
+            return tags.length ? `<div class="mini-tags">${tags.join('')}</div>` : '';
+        }
         function getDefaultTxnDateForSelectedMonth() {
             const today = getLocalYMD(new Date());
             const selectedMonth = getSelectedMonthKey();
@@ -1118,20 +1143,7 @@
                 if(dateStr === todayStr) dayNumHtml = `<span class="day-today">${d}</span>`;
 
                 if(state.filterRoom === 'All') {
-                    let tagsHtml = '';
-                    if(state.bookings[dateStr]) {
-                        tagsHtml = '<div class="mini-tags">';
-                        state.bookings[dateStr].forEach(b => {
-                            const rInfo = ROOMS.find(r => r.id === b.rooms[0].type);
-                            if(rInfo) {
-                                let tagClass = `tag-${rInfo.name.split(' ')[0]}`;
-                                if(rInfo.name==='Family') tagClass='tag-Family';
-                                if(rInfo.name==='Villa') tagClass='tag-Villa';
-                                tagsHtml += `<div class="mini-tag ${tagClass}">${rInfo.short}</div>`;
-                            }
-                        });
-                        tagsHtml += '</div>';
-                    }
+                    const tagsHtml = buildCalendarRoomTags(state.bookings[dateStr]);
                     cell.innerHTML = `${dayNumHtml}${tagsHtml}`;
                 } else {
                     cell.innerHTML = dayNumHtml;
