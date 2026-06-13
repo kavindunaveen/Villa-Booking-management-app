@@ -51,6 +51,11 @@
         }
         .app-title { font-size: 1.2rem; font-weight: 800; color: var(--primary); }
         .header-icon { font-size: 1.2rem; color: var(--text-main); cursor: pointer; }
+        .header-actions { display: flex; align-items: center; gap: 16px; }
+        .sync-status { font-size: 1rem; color: var(--text-light); cursor: pointer; }
+        .sync-status.connected { color: var(--success); }
+        .sync-status.syncing { color: var(--accent); }
+        .sync-status.error { color: var(--danger); }
 
         .main-content {
             flex: 1; overflow-y: auto; padding-bottom: calc(var(--nav-height) + 20px);
@@ -295,7 +300,10 @@
     <!-- HEADER -->
     <div class="header">
         <div class="app-title">Lake Breeze Villa</div>
-        <div class="header-icon" onclick="toggleTheme()"><i class="fas fa-moon"></i></div>
+        <div class="header-actions">
+            <div id="syncStatus" class="sync-status" onclick="syncFromCloud(true)" title="Cloud Sync"><i class="fas fa-cloud"></i></div>
+            <div class="header-icon" onclick="toggleTheme()"><i class="fas fa-moon"></i></div>
+        </div>
     </div>
 
     <!-- MAIN CONTENT -->
@@ -381,6 +389,10 @@
                 <div class="menu-row" onclick="openModal('expensesModal')">
                     <span><i class="fas fa-receipt"></i> Expenses</span>
                     <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i>
+                </div>
+                <div class="menu-row" onclick="syncFromCloud(true)">
+                    <span><i class="fas fa-cloud"></i> Cloud Sync</span>
+                    <span id="menuSyncStatus" style="font-size:0.8rem; color:var(--text-light);">Connecting...</span>
                 </div>
                 <div class="menu-row" onclick="exportCSV()">
                     <span><i class="fas fa-file-csv"></i> Export Report (CSV)</span>
@@ -597,8 +609,17 @@
             roomPickerDate: null,
             roomPickerSelection: [],
             bookingRoomsLocked: false,
-            lockedBookingRooms: []
+            lockedBookingRooms: [],
+            cloudSyncTimer: null,
+            cloudSyncBusy: false,
+            cloudEventSource: null,
+            cloudRefreshTimer: null
         };
+
+        const CLOUD_DATABASE_URL = 'https://lake-breeze-villa-default-rtdb.asia-southeast1.firebasedatabase.app';
+        const CLOUD_SYNC_ID = 'lake-breeze-villa';
+        const CLOUD_PENDING_KEY = 'hotelCloudPendingOps_v1';
+        const CLOUD_POLL_MS = 30000;
 
         const getLocalYMD = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Colombo' });
         const formatRs = (v) => `Rs ${(parseFloat(v) || 0).toLocaleString('en-US')}/-`;
@@ -614,6 +635,184 @@
             return new Date(yy, mm - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         };
         const getSelectedMonthKey = () => getLocalYMD(state.viewDate).slice(0, 7);
+        function isCloudConfigured() {
+            return true;
+        }
+        function getCloudEndpoint(path = '') {
+            const suffix = path ? `/${path}` : '';
+            return `${CLOUD_DATABASE_URL}/${CLOUD_SYNC_ID}${suffix}.json`;
+        }
+        function setCloudSyncStatus(status, message) {
+            const statusEl = document.getElementById('syncStatus');
+            const menuEl = document.getElementById('menuSyncStatus');
+            if (statusEl) {
+                statusEl.className = `sync-status ${status || ''}`.trim();
+                statusEl.title = message || 'Cloud Sync';
+            }
+            if (menuEl) {
+                menuEl.innerText = message || 'Connecting...';
+                menuEl.style.color = status === 'error' ? 'var(--danger)' : status === 'connected' ? 'var(--success)' : 'var(--text-light)';
+            }
+        }
+        function getCloudPendingOperations() {
+            try { return JSON.parse(localStorage.getItem(CLOUD_PENDING_KEY)) || []; }
+            catch (e) { return []; }
+        }
+        function queueCloudOperation(method, path, data = null) {
+            if (!isCloudConfigured()) return;
+            const pending = getCloudPendingOperations();
+            pending.push({ id: `${Date.now()}_${Math.random()}`, method, path, data });
+            localStorage.setItem(CLOUD_PENDING_KEY, JSON.stringify(pending));
+            flushCloudQueue();
+        }
+        async function flushCloudQueue() {
+            if (!isCloudConfigured() || state.cloudSyncBusy) return;
+            const pending = getCloudPendingOperations();
+            if (!pending.length) return;
+            state.cloudSyncBusy = true;
+            setCloudSyncStatus('syncing', `Syncing ${pending.length} change${pending.length === 1 ? '' : 's'}...`);
+            try {
+                while (pending.length) {
+                    const op = pending[0];
+                    const response = await fetch(getCloudEndpoint(op.path), {
+                        method: op.method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: op.method === 'DELETE' ? undefined : JSON.stringify(op.data)
+                    });
+                    if (!response.ok) throw new Error(response.status === 401 ? 'Firebase permission denied' : `Cloud request failed (${response.status})`);
+                    pending.shift();
+                    localStorage.setItem(CLOUD_PENDING_KEY, JSON.stringify(pending));
+                }
+                setCloudSyncStatus('connected', 'Synced');
+            } catch (error) {
+                console.error('Cloud sync upload failed:', error);
+                setCloudSyncStatus('error', error.message === 'Firebase permission denied' ? 'Firebase rules block access' : 'Offline - changes waiting to sync');
+            } finally {
+                state.cloudSyncBusy = false;
+            }
+        }
+        function getUniqueBookingsMap() {
+            const result = {};
+            Object.values(state.bookings).flat().forEach(booking => {
+                if (booking && booking.id != null) result[String(booking.id)] = booking;
+            });
+            return result;
+        }
+        function buildBookingsByDate(records) {
+            const result = {};
+            Object.values(records || {}).forEach(booking => {
+                if (!booking || !booking.id || !Array.isArray(booking.range)) return;
+                booking.range.forEach(date => {
+                    if (!result[date]) result[date] = [];
+                    result[date].push(booking);
+                });
+            });
+            return result;
+        }
+        function arrayToRecordMap(items) {
+            const result = {};
+            (items || []).forEach(item => {
+                if (item && item.id != null) result[String(item.id)] = item;
+            });
+            return result;
+        }
+        function recordMapToArray(records) {
+            return Object.values(records || {}).filter(Boolean);
+        }
+        function saveLocalData() {
+            localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings));
+            localStorage.setItem('hotelExpenses_v1', JSON.stringify(state.expenses));
+            localStorage.setItem('hotelMeals_v1', JSON.stringify(state.meals));
+        }
+        function refreshDataViews() {
+            renderCalendar(); renderHome(); renderAgenda(); renderMenu();
+            if (document.getElementById('expensesModal')?.classList.contains('open')) renderExpensesList();
+            if (document.getElementById('mealsModal')?.classList.contains('open')) renderMealsList();
+        }
+        function persistBookingToCloud(booking) {
+            localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings));
+            if (booking && booking.id != null) queueCloudOperation('PUT', `bookings/${encodeURIComponent(String(booking.id))}`, booking);
+        }
+        function deleteBookingFromCloud(id) {
+            localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings));
+            queueCloudOperation('DELETE', `bookings/${encodeURIComponent(String(id))}`);
+        }
+        function persistExpenseToCloud(expense) {
+            localStorage.setItem('hotelExpenses_v1', JSON.stringify(state.expenses));
+            if (expense && expense.id != null) queueCloudOperation('PUT', `expenses/${encodeURIComponent(String(expense.id))}`, expense);
+        }
+        function persistMealToCloud(meal) {
+            localStorage.setItem('hotelMeals_v1', JSON.stringify(state.meals));
+            if (meal && meal.id != null) queueCloudOperation('PUT', `meals/${encodeURIComponent(String(meal.id))}`, meal);
+        }
+        function deleteMealFromCloud(id) {
+            localStorage.setItem('hotelMeals_v1', JSON.stringify(state.meals));
+            queueCloudOperation('DELETE', `meals/${encodeURIComponent(String(id))}`);
+        }
+        function replaceCloudWithLocalData() {
+            if (!isCloudConfigured()) return;
+            queueCloudOperation('PUT', 'bookings', getUniqueBookingsMap());
+            queueCloudOperation('PUT', 'expenses', arrayToRecordMap(state.expenses));
+            queueCloudOperation('PUT', 'meals', arrayToRecordMap(state.meals));
+        }
+        function uploadThisDeviceToCloud() {
+            if (!isCloudConfigured()) return alert('Enter and save the cloud sync settings first.');
+            if (!confirm('Replace the cloud bookings, expenses, and meals with the data currently on this device?')) return;
+            replaceCloudWithLocalData();
+            setCloudSyncStatus('syncing', 'Uploading this device data...');
+        }
+        async function syncFromCloud(showMessage = false) {
+            if (state.cloudSyncBusy) return;
+            await flushCloudQueue();
+            if (state.cloudSyncBusy) return;
+            state.cloudSyncBusy = true;
+            setCloudSyncStatus('syncing', 'Checking for updates...');
+            try {
+                const response = await fetch(getCloudEndpoint());
+                if (!response.ok) throw new Error(response.status === 401 ? 'Firebase permission denied' : `Cloud request failed (${response.status})`);
+                const cloud = await response.json();
+                if (!cloud || (!cloud.bookings && !cloud.expenses && !cloud.meals)) {
+                    replaceCloudWithLocalData();
+                    setTimeout(flushCloudQueue, 0);
+                    if (showMessage) setCloudSyncStatus('syncing', 'Uploading this device data...');
+                    return;
+                }
+                state.bookings = buildBookingsByDate(cloud.bookings);
+                state.expenses = normalizeTxnEntries(recordMapToArray(cloud.expenses), 'expense');
+                state.meals = normalizeTxnEntries(recordMapToArray(cloud.meals), 'meal');
+                saveLocalData();
+                refreshDataViews();
+                setCloudSyncStatus('connected', 'Synced');
+            } catch (error) {
+                console.error('Cloud sync download failed:', error);
+                setCloudSyncStatus('error', error.message === 'Firebase permission denied' ? 'Firebase rules block access' : 'Offline or cloud connection error');
+            } finally {
+                state.cloudSyncBusy = false;
+            }
+        }
+        function initializeCloudSync() {
+            if (state.cloudSyncTimer) clearInterval(state.cloudSyncTimer);
+            if (state.cloudEventSource) state.cloudEventSource.close();
+            syncFromCloud();
+            initializeCloudRealtimeListener();
+            state.cloudSyncTimer = setInterval(() => syncFromCloud(), CLOUD_POLL_MS);
+        }
+        function initializeCloudRealtimeListener() {
+            if (typeof EventSource === 'undefined') return;
+            if (state.cloudEventSource) state.cloudEventSource.close();
+            const source = new EventSource(getCloudEndpoint());
+            state.cloudEventSource = source;
+            const scheduleRefresh = () => {
+                clearTimeout(state.cloudRefreshTimer);
+                state.cloudRefreshTimer = setTimeout(() => syncFromCloud(), 250);
+            };
+            source.addEventListener('put', scheduleRefresh);
+            source.addEventListener('patch', scheduleRefresh);
+            source.onopen = () => setCloudSyncStatus('connected', 'Live sync connected');
+            source.onerror = () => {
+                setCloudSyncStatus('error', 'Live sync connection error');
+            };
+        }
         function isDateOnOrAfter(dateStr, baselineYmd) {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ''))) return false;
             return dateStr >= baselineYmd;
@@ -820,6 +1019,7 @@
                     chipCont.innerHTML += `<div class="cal-chip" onclick="setFilter('${r.id}', this)">${r.name}</div>`;
                 });
             }
+            initializeCloudSync();
         }
 
         function switchTab(tabId) {
@@ -1547,7 +1747,7 @@
             document.getElementById('balanceDisplay').style.color = bal <= 0 ? 'var(--success)' : 'var(--primary)';
         }
 
-        function saveBooking() {
+        async function saveBooking() {
             const guestPhone = document.getElementById('guestPhone').value.trim();
             if(!guestPhone) return alert('Guest contact number required');
             const startDate = document.getElementById('startDate').value;
@@ -1561,6 +1761,7 @@
             const rooms = getEffectiveSelectedModalRooms();
             if(rooms.length === 0) return alert('Select at least one room');
 
+            if (isCloudConfigured()) await syncFromCloud();
             if(checkConflict(rooms, state.editingId)) return alert("⚠️ Room Conflict!");
 
             if (state.editingId) {
@@ -1595,7 +1796,7 @@
                 state.bookings[d].push(booking);
             });
 
-            localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings));
+            persistBookingToCloud(booking);
             closeModal('bookingModal');
             state.selection = []; state.editingId = null;
             renderCalendar(); renderHome(); renderAgenda(); renderMenu();
@@ -1606,8 +1807,9 @@
             const desc = document.getElementById('exDesc').value; const amt = document.getElementById('exAmount').value;
             const exDate = document.getElementById('exDate').value || getDefaultTxnDateForSelectedMonth();
             if(!desc || !amt) return;
-            state.expenses.push({ id: Date.now().toString(), date: exDate, desc, amount: amt });
-            localStorage.setItem('hotelExpenses_v1', JSON.stringify(state.expenses));
+            const expense = { id: Date.now().toString(), date: exDate, desc, amount: amt };
+            state.expenses.push(expense);
+            persistExpenseToCloud(expense);
             renderExpensesList(); renderMenu();
             document.getElementById('exDesc').value = ''; document.getElementById('exAmount').value = '';
             document.getElementById('exDate').value = getDefaultTxnDateForSelectedMonth();
@@ -1634,8 +1836,9 @@
             const desc = document.getElementById('mealDesc').value; const amt = document.getElementById('mealAmount').value;
             const mealDate = document.getElementById('mealDate').value || getDefaultTxnDateForSelectedMonth();
             if(!desc || !amt) return;
-            state.meals.push({ id: Date.now().toString(), date: mealDate, desc, amount: amt });
-            localStorage.setItem('hotelMeals_v1', JSON.stringify(state.meals));
+            const meal = { id: Date.now().toString(), date: mealDate, desc, amount: amt };
+            state.meals.push(meal);
+            persistMealToCloud(meal);
             renderMealsList(); renderMenu();
             document.getElementById('mealDesc').value = ''; document.getElementById('mealAmount').value = '';
             document.getElementById('mealDate').value = getDefaultTxnDateForSelectedMonth();
@@ -1657,7 +1860,7 @@
                 list.innerHTML += `<div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border)"><span>${e.desc} <small style="color:var(--text-light)">(${e.date})</small></span><span style="color:var(--success)">+Rs ${e.amount}</span><i class="fas fa-trash" style="color:var(--danger); cursor:pointer; margin-left:10px;" onclick="deleteMeal('${e.id}')"></i></div>`;
             });
         }
-        function deleteMeal(id) { if(!confirm("Delete?")) return; state.meals = state.meals.filter(m => m.id !== id); localStorage.setItem('hotelMeals_v1', JSON.stringify(state.meals)); renderMealsList(); renderMenu(); }
+        function deleteMeal(id) { if(!confirm("Delete?")) return; state.meals = state.meals.filter(m => m.id !== id); deleteMealFromCloud(id); renderMealsList(); renderMenu(); }
 
         function openModal(id) {
             document.getElementById(id).classList.add('open');
@@ -1840,13 +2043,13 @@
                 });
             });
             if(found && updatedBooking) {
-                localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings));
+                persistBookingToCloud(updatedBooking);
                 renderCalendar(); renderHome(); renderAgenda(); renderMenu();
                 // If open in modal, refresh modal
                 if(document.getElementById('detailsModal').classList.contains('open')) openDetails(updatedBooking);
             }
         }
-        function deleteBooking() { if(!confirm("Delete?")) return; const b = Object.values(state.bookings).flat().find(x=>String(x.id)===String(state.viewId)); if(b) { b.range.forEach(d=>{ if(state.bookings[d]) state.bookings[d] = state.bookings[d].filter(x=>String(x.id)!==String(state.viewId)); }); localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings)); closeModal('detailsModal'); renderCalendar(); renderHome(); renderAgenda(); renderMenu(); } }
+        function deleteBooking() { if(!confirm("Delete?")) return; const b = Object.values(state.bookings).flat().find(x=>String(x.id)===String(state.viewId)); if(b) { b.range.forEach(d=>{ if(state.bookings[d]) state.bookings[d] = state.bookings[d].filter(x=>String(x.id)!==String(state.viewId)); }); deleteBookingFromCloud(b.id); closeModal('detailsModal'); renderCalendar(); renderHome(); renderAgenda(); renderMenu(); } }
         function exportData() { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({bookings: state.bookings, expenses: state.expenses, meals: state.meals})); a.download = `lb_backup_${getLocalYMD(new Date())}.json`; a.click(); }
         function exportCSV() {
             let all=[], seen=new Set(); Object.keys(state.bookings).forEach(d=>{ state.bookings[d].forEach(b=>{ if(!seen.has(b.id)){ seen.add(b.id); all.push(b); } }); });
@@ -1862,10 +2065,11 @@
                 state.bookings = d.bookings || d;
                 state.expenses = normalizeTxnEntries(d.expenses || [], 'expense');
                 state.meals = normalizeTxnEntries(d.meals || [], 'meal');
-                localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings));
-                localStorage.setItem('hotelExpenses_v1', JSON.stringify(state.expenses));
-                localStorage.setItem('hotelMeals_v1', JSON.stringify(state.meals));
-                location.reload();
+                saveLocalData();
+                replaceCloudWithLocalData();
+                refreshDataViews();
+                input.value = '';
+                alert(isCloudConfigured() ? 'Backup restored and queued for cloud sync.' : 'Backup restored on this device.');
             };
             r.readAsText(input.files[0]);
         }
