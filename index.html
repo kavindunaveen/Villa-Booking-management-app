@@ -251,6 +251,48 @@
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-light); font-weight: 600; }
         .btn-danger { background: #FFEBEE; color: #D32F2F; }
         .btn-whatsapp { background: #25D366; color: white; }
+        .form-card { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 14px; margin-bottom: 16px; }
+        .form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        .form-grid.two { grid-template-columns: 1fr 0.8fr; }
+        .txn-list { max-height: 330px; overflow-y: auto; display: grid; gap: 10px; padding-right: 2px; }
+        .txn-card {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 14px;
+            padding: 12px; display: grid; gap: 8px;
+        }
+        .txn-card-main { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+        .txn-title { font-weight: 800; font-size: 0.98rem; }
+        .txn-meta { color: var(--text-light); font-size: 0.78rem; margin-top: 3px; }
+        .txn-amount { font-weight: 800; white-space: nowrap; }
+        .txn-amount.income { color: var(--success); }
+        .txn-amount.expense { color: var(--danger); }
+        .txn-actions { display: flex; gap: 8px; }
+        .txn-action-btn {
+            flex: 1; border: 1px solid var(--border); background: var(--card); color: var(--text-main);
+            border-radius: 10px; padding: 9px 10px; font-weight: 700; cursor: pointer;
+        }
+        .txn-action-btn.danger { color: var(--danger); background: #FFEBEE; border-color: #FFCDD2; }
+        .txn-badge {
+            display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 0.72rem;
+            font-weight: 800; margin-top: 6px;
+        }
+        .txn-badge.villa, .txn-badge.meals { background: var(--bg-villa); color: var(--tx-villa); }
+        .txn-badge.home { background: var(--bg-family); color: var(--tx-family); }
+        .txn-badge.other { background: var(--bg-double); color: var(--tx-double); }
+        .txn-badge.uncategorized { background: #f0f0f0; color: #777; }
+        .txn-filter-tabs { display: flex; gap: 8px; overflow-x: auto; margin: 0 0 12px 0; padding-bottom: 2px; }
+        .txn-filter-tab {
+            border: 1px solid var(--border); background: var(--bg); color: var(--text-light);
+            border-radius: 999px; padding: 8px 12px; font-size: 0.82rem; font-weight: 800;
+            white-space: nowrap; cursor: pointer;
+        }
+        .txn-filter-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .edit-notice {
+            display: none; background: #FFF3E0; color: #E65100; border-radius: 10px;
+            padding: 10px 12px; font-size: 0.85rem; font-weight: 700; margin-bottom: 12px;
+        }
+        @media (max-width: 420px) {
+            .form-grid.two { grid-template-columns: 1fr; }
+        }
 
         .room-chips { display: flex; flex-wrap: wrap; gap: 8px; }
         .room-select-chip {
@@ -551,23 +593,38 @@
         <div class="sheet">
             <h3 style="margin-top:0;">Expenses</h3>
             <div id="expensesMonthHint" style="color:var(--text-light); font-weight:600; margin-bottom:10px;"></div>
-            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <input type="text" id="exDesc" class="input-field" placeholder="Description" style="flex:2">
-                <input type="number" id="exAmount" class="input-field" placeholder="Amount" style="flex:1">
+            <div class="form-card">
+                <div class="input-group">
+                    <label class="input-label">Description</label>
+                    <input type="text" id="exDesc" class="input-field" placeholder="e.g. Electricity bill">
+                </div>
+                <div class="form-grid two">
+                    <div class="input-group">
+                        <label class="input-label">Amount</label>
+                        <input type="number" id="exAmount" class="input-field" placeholder="0">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Date</label>
+                        <input type="date" id="exDate" class="input-field">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Category</label>
+                    <select id="exCategory" class="input-field">
+                        <option value="villa">Villa Expense</option>
+                        <option value="home">Home Expense</option>
+                        <option value="uncategorized">Uncategorized</option>
+                    </select>
+                </div>
+                <button id="btnAddExpense" class="btn btn-primary" onclick="addExpense()" style="margin-top:0; padding:12px;">+ Add Expense</button>
             </div>
-            <div style="margin-bottom:15px;">
-                <select id="exCategory" class="input-field">
-                    <option value="villa">Villa Expense</option>
-                    <option value="home">Home Expense</option>
-                    <option value="uncategorized">Uncategorized</option>
-                </select>
+            <div class="txn-filter-tabs">
+                <button id="expenseFilterAll" class="txn-filter-tab active" onclick="setExpenseFilter('all')">All</button>
+                <button id="expenseFilterVilla" class="txn-filter-tab" onclick="setExpenseFilter('villa')">Villa</button>
+                <button id="expenseFilterHome" class="txn-filter-tab" onclick="setExpenseFilter('home')">Home</button>
+                <button id="expenseFilterUncategorized" class="txn-filter-tab" onclick="setExpenseFilter('uncategorized')">Uncategorized</button>
             </div>
-            <div style="margin-bottom:15px;">
-                <input type="date" id="exDate" class="input-field">
-            </div>
-            <button id="btnAddExpense" class="btn btn-primary" onclick="addExpense()" style="margin-top:0; margin-bottom:8px; padding:12px;">+ Add Expense</button>
-            <button id="btnCancelExpenseEdit" class="btn btn-outline" onclick="clearExpenseForm()" style="display:none; margin-top:0; margin-bottom:20px; padding:12px;">Cancel Edit</button>
-            <div id="expensesList" style="max-height:300px; overflow-y:auto;"></div>
+            <div id="expensesList" class="txn-list"></div>
             <button class="btn btn-outline" onclick="closeModal('expensesModal')">Close</button>
         </div>
     </div>
@@ -577,23 +634,104 @@
         <div class="sheet">
             <h3 style="margin-top:0;">Income</h3>
             <div id="mealsMonthHint" style="color:var(--text-light); font-weight:600; margin-bottom:10px;"></div>
-            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <input type="text" id="mealDesc" class="input-field" placeholder="Description (e.g. Breakfast, Salary)" style="flex:2">
-                <input type="number" id="mealAmount" class="input-field" placeholder="Amount" style="flex:1">
+            <div class="form-card">
+                <div class="input-group">
+                    <label class="input-label">Description</label>
+                    <input type="text" id="mealDesc" class="input-field" placeholder="e.g. Breakfast, salary">
+                </div>
+                <div class="form-grid two">
+                    <div class="input-group">
+                        <label class="input-label">Amount</label>
+                        <input type="number" id="mealAmount" class="input-field" placeholder="0">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Date</label>
+                        <input type="date" id="mealDate" class="input-field">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Income Source</label>
+                    <select id="mealSource" class="input-field">
+                        <option value="meals">Meal Income</option>
+                        <option value="other">Other Income</option>
+                    </select>
+                </div>
+                <button id="btnAddMeal" class="btn btn-primary" onclick="addMeal()" style="margin-top:0; padding:12px;">+ Add Income</button>
             </div>
-            <div style="margin-bottom:15px;">
-                <select id="mealSource" class="input-field">
-                    <option value="meals">Meal Income</option>
-                    <option value="other">Other Income</option>
-                </select>
+            <div class="txn-filter-tabs">
+                <button id="incomeFilterAll" class="txn-filter-tab active" onclick="setIncomeFilter('all')">All</button>
+                <button id="incomeFilterMeals" class="txn-filter-tab" onclick="setIncomeFilter('meals')">Meals</button>
+                <button id="incomeFilterOther" class="txn-filter-tab" onclick="setIncomeFilter('other')">Other</button>
             </div>
-            <div style="margin-bottom:15px;">
-                <input type="date" id="mealDate" class="input-field">
-            </div>
-            <button id="btnAddMeal" class="btn btn-primary" onclick="addMeal()" style="margin-top:0; margin-bottom:8px; padding:12px;">+ Add Income</button>
-            <button id="btnCancelMealEdit" class="btn btn-outline" onclick="clearMealForm()" style="display:none; margin-top:0; margin-bottom:20px; padding:12px;">Cancel Edit</button>
-            <div id="mealsList" style="max-height:300px; overflow-y:auto;"></div>
+            <div id="mealsList" class="txn-list"></div>
             <button class="btn btn-outline" onclick="closeModal('mealsModal')">Close</button>
+        </div>
+    </div>
+
+    <!-- EDIT EXPENSE MODAL -->
+    <div class="modal-overlay" id="editExpenseModal">
+        <div class="sheet">
+            <h3 style="margin-top:0;">Edit Expense</h3>
+            <div class="form-card">
+                <div class="input-group">
+                    <label class="input-label">Description</label>
+                    <input type="text" id="editExDesc" class="input-field">
+                </div>
+                <div class="form-grid two">
+                    <div class="input-group">
+                        <label class="input-label">Amount</label>
+                        <input type="number" id="editExAmount" class="input-field">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Date</label>
+                        <input type="date" id="editExDate" class="input-field">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Category</label>
+                    <select id="editExCategory" class="input-field">
+                        <option value="villa">Villa Expense</option>
+                        <option value="home">Home Expense</option>
+                        <option value="uncategorized">Uncategorized</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="saveExpenseEdit()" style="margin-top:0;">Save Changes</button>
+            <button class="btn btn-danger" onclick="deleteEditingExpense()">Delete Expense</button>
+            <button class="btn btn-outline" onclick="closeModal('editExpenseModal')">Cancel</button>
+        </div>
+    </div>
+
+    <!-- EDIT INCOME MODAL -->
+    <div class="modal-overlay" id="editMealModal">
+        <div class="sheet">
+            <h3 style="margin-top:0;">Edit Income</h3>
+            <div class="form-card">
+                <div class="input-group">
+                    <label class="input-label">Description</label>
+                    <input type="text" id="editMealDesc" class="input-field">
+                </div>
+                <div class="form-grid two">
+                    <div class="input-group">
+                        <label class="input-label">Amount</label>
+                        <input type="number" id="editMealAmount" class="input-field">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Date</label>
+                        <input type="date" id="editMealDate" class="input-field">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Income Source</label>
+                    <select id="editMealSource" class="input-field">
+                        <option value="meals">Meal Income</option>
+                        <option value="other">Other Income</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="saveMealEdit()" style="margin-top:0;">Save Changes</button>
+            <button class="btn btn-danger" onclick="deleteEditingMeal()">Delete Income</button>
+            <button class="btn btn-outline" onclick="closeModal('editMealModal')">Cancel</button>
         </div>
     </div>
 
@@ -636,6 +774,8 @@
             meals: JSON.parse(localStorage.getItem('hotelMeals_v1')) || [],
             activeTab: 'home',
             financePeriod: 'month',
+            expenseFilter: 'all',
+            incomeFilter: 'all',
             filterRoom: 'All',
             selection: [],
             viewId: null,
@@ -1892,55 +2032,72 @@
         }
 
         // --- EXPENSES ---
-        function updateExpenseFormMode() {
-            const isEditing = !!state.editingExpenseId;
-            const btn = document.getElementById('btnAddExpense');
-            const cancel = document.getElementById('btnCancelExpenseEdit');
-            if (btn) btn.innerText = isEditing ? 'Update Expense' : '+ Add Expense';
-            if (cancel) cancel.style.display = isEditing ? 'block' : 'none';
-        }
         function clearExpenseForm() {
-            state.editingExpenseId = null;
             document.getElementById('exDesc').value = '';
             document.getElementById('exAmount').value = '';
             document.getElementById('exCategory').value = 'villa';
             document.getElementById('exDate').value = getDefaultTxnDateForSelectedMonth();
-            updateExpenseFormMode();
         }
+        function clearExpenseEditForm() { state.editingExpenseId = null; }
         function editExpense(id) {
             const expense = state.expenses.find(e => String(e.id) === String(id));
             if (!expense) return;
             state.editingExpenseId = String(id);
-            document.getElementById('exDesc').value = expense.desc || '';
-            document.getElementById('exAmount').value = expense.amount || '';
-            document.getElementById('exCategory').value = expense.category || 'uncategorized';
-            document.getElementById('exDate').value = expense.date || getDefaultTxnDateForSelectedMonth();
-            updateExpenseFormMode();
+            document.getElementById('editExDesc').value = expense.desc || '';
+            document.getElementById('editExAmount').value = expense.amount || '';
+            document.getElementById('editExCategory').value = expense.category || 'uncategorized';
+            document.getElementById('editExDate').value = expense.date || getDefaultTxnDateForSelectedMonth();
+            openModal('editExpenseModal');
         }
         function addExpense() {
             const desc = document.getElementById('exDesc').value; const amt = document.getElementById('exAmount').value;
             const exDate = document.getElementById('exDate').value || getDefaultTxnDateForSelectedMonth();
             const category = document.getElementById('exCategory').value || 'uncategorized';
             if(!desc || !amt) return;
-            const expense = { id: state.editingExpenseId || Date.now().toString(), date: exDate, desc, amount: amt, category };
-            if (state.editingExpenseId) {
-                state.expenses = state.expenses.map(item => String(item.id) === String(state.editingExpenseId) ? expense : item);
-            } else {
-                state.expenses.push(expense);
-            }
+            const expense = { id: Date.now().toString(), date: exDate, desc, amount: amt, category };
+            state.expenses.push(expense);
             persistExpenseToCloud(expense);
             renderExpensesList(); renderMenu();
             clearExpenseForm();
         }
+        function saveExpenseEdit() {
+            if (!state.editingExpenseId) return;
+            const desc = document.getElementById('editExDesc').value;
+            const amount = document.getElementById('editExAmount').value;
+            const date = document.getElementById('editExDate').value || getDefaultTxnDateForSelectedMonth();
+            const category = document.getElementById('editExCategory').value || 'uncategorized';
+            if (!desc || !amount) return alert('Description and amount are required');
+            if (!confirm('Save changes to this expense?')) return;
+            const expense = { id: state.editingExpenseId, date, desc, amount, category };
+            state.expenses = state.expenses.map(item => String(item.id) === String(state.editingExpenseId) ? expense : item);
+            persistExpenseToCloud(expense);
+            closeModal('editExpenseModal');
+            renderExpensesList(); renderMenu();
+        }
+        function setExpenseFilter(filter) {
+            state.expenseFilter = filter;
+            renderExpensesList();
+        }
+        function syncExpenseFilterTabs() {
+            const map = {
+                all: 'expenseFilterAll',
+                villa: 'expenseFilterVilla',
+                home: 'expenseFilterHome',
+                uncategorized: 'expenseFilterUncategorized'
+            };
+            Object.keys(map).forEach(key => document.getElementById(map[key])?.classList.toggle('active', state.expenseFilter === key));
+        }
         function renderExpensesList() {
             const list = document.getElementById('expensesList'); list.innerHTML = '';
+            syncExpenseFilterTabs();
             if(state.expenses.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No expenses yet</p>'; return; }
             const selectedMonth = getSelectedMonthKey();
             const items = state.expenses
                 .filter(e => getMonthKey(e.date) === selectedMonth)
+                .filter(e => state.expenseFilter === 'all' || (e.category || 'uncategorized') === state.expenseFilter)
                 .sort((a,b) => String(b.date).localeCompare(String(a.date)));
             if(items.length === 0) {
-                list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No expenses for this month</p>';
+                list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No expenses found for this view</p>';
                 return;
             }
             const subtotal = items.reduce((sum, x) => sum + (parseFloat(x.amount) || 0), 0);
@@ -1948,60 +2105,98 @@
             items.forEach(e => {
                 const category = e.category || 'uncategorized';
                 const categoryLabel = category === 'villa' ? 'Villa' : category === 'home' ? 'Home' : 'Uncategorized';
-                list.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid var(--border); gap:10px;"><span onclick="editExpense('${e.id}')" style="cursor:pointer; flex:1;">${e.desc} <small style="color:var(--text-light)">(${e.date} · ${categoryLabel})</small></span><span style="color:var(--danger); white-space:nowrap;">-Rs ${e.amount}</span><i class="fas fa-pen" style="color:var(--primary); cursor:pointer;" onclick="editExpense('${e.id}')"></i><i class="fas fa-trash" style="color:var(--danger); cursor:pointer;" onclick="deleteExpense('${e.id}')"></i></div>`;
+                list.innerHTML += `<div class="txn-card">
+                    <div class="txn-card-main">
+                        <div>
+                            <div class="txn-title">${e.desc}</div>
+                            <div class="txn-meta">${e.date}</div>
+                            <span class="txn-badge ${category}">${categoryLabel}</span>
+                        </div>
+                        <div class="txn-amount expense">-Rs ${e.amount}</div>
+                    </div>
+                    <div class="txn-actions">
+                        <button class="txn-action-btn" onclick="editExpense('${e.id}')"><i class="fas fa-pen"></i> Edit</button>
+                        <button class="txn-action-btn danger" onclick="deleteExpense('${e.id}')"><i class="fas fa-trash"></i> Delete</button>
+                    </div>
+                </div>`;
             });
         }
-        function deleteExpense(id) { if(!confirm("Delete?")) return; state.expenses = state.expenses.filter(e => String(e.id) !== String(id)); if(String(state.editingExpenseId) === String(id)) clearExpenseForm(); deleteExpenseFromCloud(id); renderExpensesList(); renderMenu(); }
-
-        function updateMealFormMode() {
-            const isEditing = !!state.editingMealId;
-            const btn = document.getElementById('btnAddMeal');
-            const cancel = document.getElementById('btnCancelMealEdit');
-            if (btn) btn.innerText = isEditing ? 'Update Income' : '+ Add Income';
-            if (cancel) cancel.style.display = isEditing ? 'block' : 'none';
+        function deleteExpense(id) { if(!confirm("Delete?")) return; state.expenses = state.expenses.filter(e => String(e.id) !== String(id)); if(String(state.editingExpenseId) === String(id)) clearExpenseEditForm(); deleteExpenseFromCloud(id); renderExpensesList(); renderMenu(); }
+        function deleteEditingExpense() {
+            if (!state.editingExpenseId) return;
+            const id = state.editingExpenseId;
+            if(!confirm("Delete this expense?")) return;
+            state.expenses = state.expenses.filter(e => String(e.id) !== String(id));
+            deleteExpenseFromCloud(id);
+            closeModal('editExpenseModal');
+            renderExpensesList(); renderMenu();
         }
+
         function clearMealForm() {
-            state.editingMealId = null;
             document.getElementById('mealDesc').value = '';
             document.getElementById('mealAmount').value = '';
             document.getElementById('mealSource').value = 'meals';
             document.getElementById('mealDate').value = getDefaultTxnDateForSelectedMonth();
-            updateMealFormMode();
         }
+        function clearMealEditForm() { state.editingMealId = null; }
         function editMeal(id) {
             const meal = state.meals.find(m => String(m.id) === String(id));
             if (!meal) return;
             state.editingMealId = String(id);
-            document.getElementById('mealDesc').value = meal.desc || '';
-            document.getElementById('mealAmount').value = meal.amount || '';
-            document.getElementById('mealSource').value = meal.source || 'meals';
-            document.getElementById('mealDate').value = meal.date || getDefaultTxnDateForSelectedMonth();
-            updateMealFormMode();
+            document.getElementById('editMealDesc').value = meal.desc || '';
+            document.getElementById('editMealAmount').value = meal.amount || '';
+            document.getElementById('editMealSource').value = meal.source || 'meals';
+            document.getElementById('editMealDate').value = meal.date || getDefaultTxnDateForSelectedMonth();
+            openModal('editMealModal');
         }
         function addMeal() {
             const desc = document.getElementById('mealDesc').value; const amt = document.getElementById('mealAmount').value;
             const mealDate = document.getElementById('mealDate').value || getDefaultTxnDateForSelectedMonth();
             const source = document.getElementById('mealSource').value || 'meals';
             if(!desc || !amt) return;
-            const meal = { id: state.editingMealId || Date.now().toString(), date: mealDate, desc, amount: amt, source };
-            if (state.editingMealId) {
-                state.meals = state.meals.map(item => String(item.id) === String(state.editingMealId) ? meal : item);
-            } else {
-                state.meals.push(meal);
-            }
+            const meal = { id: Date.now().toString(), date: mealDate, desc, amount: amt, source };
+            state.meals.push(meal);
             persistMealToCloud(meal);
             renderMealsList(); renderMenu();
             clearMealForm();
         }
+        function saveMealEdit() {
+            if (!state.editingMealId) return;
+            const desc = document.getElementById('editMealDesc').value;
+            const amount = document.getElementById('editMealAmount').value;
+            const date = document.getElementById('editMealDate').value || getDefaultTxnDateForSelectedMonth();
+            const source = document.getElementById('editMealSource').value || 'meals';
+            if (!desc || !amount) return alert('Description and amount are required');
+            if (!confirm('Save changes to this income entry?')) return;
+            const meal = { id: state.editingMealId, date, desc, amount, source };
+            state.meals = state.meals.map(item => String(item.id) === String(state.editingMealId) ? meal : item);
+            persistMealToCloud(meal);
+            closeModal('editMealModal');
+            renderMealsList(); renderMenu();
+        }
+        function setIncomeFilter(filter) {
+            state.incomeFilter = filter;
+            renderMealsList();
+        }
+        function syncIncomeFilterTabs() {
+            const map = {
+                all: 'incomeFilterAll',
+                meals: 'incomeFilterMeals',
+                other: 'incomeFilterOther'
+            };
+            Object.keys(map).forEach(key => document.getElementById(map[key])?.classList.toggle('active', state.incomeFilter === key));
+        }
         function renderMealsList() {
             const list = document.getElementById('mealsList'); list.innerHTML = '';
+            syncIncomeFilterTabs();
             if(state.meals.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No income yet</p>'; return; }
             const selectedMonth = getSelectedMonthKey();
             const items = state.meals
                 .filter(e => getMonthKey(e.date) === selectedMonth)
+                .filter(e => state.incomeFilter === 'all' || (e.source || 'meals') === state.incomeFilter)
                 .sort((a,b) => String(b.date).localeCompare(String(a.date)));
             if(items.length === 0) {
-                list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No income for this month</p>';
+                list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No income found for this view</p>';
                 return;
             }
             const subtotal = items.reduce((sum, x) => sum + (parseFloat(x.amount) || 0), 0);
@@ -2009,10 +2204,32 @@
             items.forEach(e => {
                 const source = e.source || 'meals';
                 const sourceLabel = source === 'other' ? 'Other Income' : 'Meal Income';
-                list.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid var(--border); gap:10px;"><span onclick="editMeal('${e.id}')" style="cursor:pointer; flex:1;">${e.desc} <small style="color:var(--text-light)">(${e.date} · ${sourceLabel})</small></span><span style="color:var(--success); white-space:nowrap;">+Rs ${e.amount}</span><i class="fas fa-pen" style="color:var(--primary); cursor:pointer;" onclick="editMeal('${e.id}')"></i><i class="fas fa-trash" style="color:var(--danger); cursor:pointer;" onclick="deleteMeal('${e.id}')"></i></div>`;
+                list.innerHTML += `<div class="txn-card">
+                    <div class="txn-card-main">
+                        <div>
+                            <div class="txn-title">${e.desc}</div>
+                            <div class="txn-meta">${e.date}</div>
+                            <span class="txn-badge ${source}">${sourceLabel}</span>
+                        </div>
+                        <div class="txn-amount income">+Rs ${e.amount}</div>
+                    </div>
+                    <div class="txn-actions">
+                        <button class="txn-action-btn" onclick="editMeal('${e.id}')"><i class="fas fa-pen"></i> Edit</button>
+                        <button class="txn-action-btn danger" onclick="deleteMeal('${e.id}')"><i class="fas fa-trash"></i> Delete</button>
+                    </div>
+                </div>`;
             });
         }
-        function deleteMeal(id) { if(!confirm("Delete?")) return; state.meals = state.meals.filter(m => String(m.id) !== String(id)); if(String(state.editingMealId) === String(id)) clearMealForm(); deleteMealFromCloud(id); renderMealsList(); renderMenu(); }
+        function deleteMeal(id) { if(!confirm("Delete?")) return; state.meals = state.meals.filter(m => String(m.id) !== String(id)); if(String(state.editingMealId) === String(id)) clearMealEditForm(); deleteMealFromCloud(id); renderMealsList(); renderMenu(); }
+        function deleteEditingMeal() {
+            if (!state.editingMealId) return;
+            const id = state.editingMealId;
+            if(!confirm("Delete this income entry?")) return;
+            state.meals = state.meals.filter(m => String(m.id) !== String(id));
+            deleteMealFromCloud(id);
+            closeModal('editMealModal');
+            renderMealsList(); renderMenu();
+        }
 
         function openModal(id) {
             document.getElementById(id).classList.add('open');
@@ -2036,6 +2253,8 @@
             if(id==='roomPickerModal') { state.roomPickerDate = null; state.roomPickerSelection = []; }
             if(id==='expensesModal') clearExpenseForm();
             if(id==='mealsModal') clearMealForm();
+            if(id==='editExpenseModal') clearExpenseEditForm();
+            if(id==='editMealModal') clearMealEditForm();
         }
         function toggleTheme() { const t = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.body.setAttribute('data-theme', t); localStorage.setItem('theme', t); }
         
