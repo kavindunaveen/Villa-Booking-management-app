@@ -1038,6 +1038,12 @@
         function isCloudAuthReady() {
             return !isAuthConfigured() || !!state.authToken;
         }
+        function requireCloudLogin(action = 'make changes') {
+            if (isCloudAuthReady()) return true;
+            alert(`Please login to Cloud Login before you ${action}.`);
+            openModal('authModal');
+            return false;
+        }
         function hasLocalBusinessData() {
             return Object.keys(getUniqueBookingsMap()).length > 0 || state.expenses.length > 0 || state.meals.length > 0;
         }
@@ -1836,6 +1842,7 @@
         }
 
         function quickBook(roomId) {
+            if (!requireCloudLogin('add a booking')) return;
             const today = getLocalYMD(new Date());
             state.selection = [today]; state.filterRoom = roomId; openBookingModal(true);
         }
@@ -2073,6 +2080,7 @@
                     handleDateTap(date, true);
                     return;
                 }
+                if (!requireCloudLogin('add a booking')) return;
                 openRoomPickerForDate(date);
                 return;
             }
@@ -2114,6 +2122,7 @@
             }
 
             // Normal Booking Logic
+            if (!requireCloudLogin('add a booking')) return;
             if (state.selection.length === 0 || state.selection.length > 1) {
                 state.selection = [date];
             } else {
@@ -2224,6 +2233,7 @@
             const date = state.roomPickerDate;
             if (!date) return;
             if (!state.roomPickerSelection.length) return alert('Select at least one room');
+            if (!requireCloudLogin('add a booking')) return;
 
             const chosenRooms = [...state.roomPickerSelection];
             closeModal('roomPickerModal');
@@ -2239,6 +2249,7 @@
 
         function continueAllBookingFromRoomPicker() {
             const date = state.roomPickerDate;
+            if (!requireCloudLogin('add a booking')) return;
             closeModal('roomPickerModal');
             if (!date) return;
             state.bookingRoomsLocked = false;
@@ -2285,6 +2296,7 @@
         }
 
         function openBookingModal(isSingleDay = false, editData = null) {
+            if (!requireCloudLogin(editData ? 'edit a booking' : 'add a booking')) return;
             document.getElementById('bookingModal').classList.add('open');
             const start = state.selection[0];
             const end = state.selection[state.selection.length-1];
@@ -2344,6 +2356,7 @@
         }
 
         function editBooking() {
+            if (!requireCloudLogin('edit a booking')) return;
             closeModal('detailsModal');
             state.editingId = state.viewBooking.id;
             state.selection = state.viewBooking.range; 
@@ -2466,6 +2479,7 @@
         }
 
         async function saveBooking() {
+            if (!requireCloudLogin('save a booking')) return;
             const guestPhone = document.getElementById('guestPhone').value.trim();
             if(!guestPhone) return alert('Guest contact number required');
             const startDate = document.getElementById('startDate').value;
@@ -2561,6 +2575,7 @@
             openModal('editExpenseModal');
         }
         function addExpense() {
+            if (!requireCloudLogin('add an expense')) return;
             const desc = document.getElementById('exDesc').value; const amt = document.getElementById('exAmount').value;
             const exDate = document.getElementById('exDate').value || getDefaultTxnDateForFinanceRange();
             const category = document.getElementById('exCategory').value || 'uncategorized';
@@ -2573,6 +2588,7 @@
             setTxnAddFormCollapsed('expense', true);
         }
         function saveExpenseEdit() {
+            if (!requireCloudLogin('edit an expense')) return;
             if (!state.editingExpenseId) return;
             const desc = document.getElementById('editExDesc').value;
             const amount = document.getElementById('editExAmount').value;
@@ -2669,8 +2685,9 @@
                 </div>`;
             });
         }
-        function deleteExpense(id) { if(!confirm("Delete?")) return; state.expenses = state.expenses.filter(e => String(e.id) !== String(id)); if(String(state.editingExpenseId) === String(id)) clearExpenseEditForm(); deleteExpenseFromCloud(id); renderExpensesList(); renderMenu(); }
+        function deleteExpense(id) { if(!requireCloudLogin('delete an expense')) return; if(!confirm("Delete?")) return; state.expenses = state.expenses.filter(e => String(e.id) !== String(id)); if(String(state.editingExpenseId) === String(id)) clearExpenseEditForm(); deleteExpenseFromCloud(id); renderExpensesList(); renderMenu(); }
         function deleteEditingExpense() {
+            if (!requireCloudLogin('delete an expense')) return;
             if (!state.editingExpenseId) return;
             const id = state.editingExpenseId;
             if(!confirm("Delete this expense?")) return;
@@ -2698,6 +2715,7 @@
             openModal('editMealModal');
         }
         function addMeal() {
+            if (!requireCloudLogin('add income')) return;
             const desc = document.getElementById('mealDesc').value; const amt = document.getElementById('mealAmount').value;
             const mealDate = document.getElementById('mealDate').value || getDefaultTxnDateForFinanceRange();
             const source = document.getElementById('mealSource').value || 'meals';
@@ -2710,6 +2728,7 @@
             setTxnAddFormCollapsed('income', true);
         }
         function saveMealEdit() {
+            if (!requireCloudLogin('edit income')) return;
             if (!state.editingMealId) return;
             const desc = document.getElementById('editMealDesc').value;
             const amount = document.getElementById('editMealAmount').value;
@@ -2784,8 +2803,9 @@
                 </div>`;
             });
         }
-        function deleteMeal(id) { if(!confirm("Delete?")) return; state.meals = state.meals.filter(m => String(m.id) !== String(id)); syncIncomeAlias(); if(String(state.editingMealId) === String(id)) clearMealEditForm(); deleteMealFromCloud(id); renderMealsList(); renderMenu(); }
+        function deleteMeal(id) { if(!requireCloudLogin('delete income')) return; if(!confirm("Delete?")) return; state.meals = state.meals.filter(m => String(m.id) !== String(id)); syncIncomeAlias(); if(String(state.editingMealId) === String(id)) clearMealEditForm(); deleteMealFromCloud(id); renderMealsList(); renderMenu(); }
         function deleteEditingMeal() {
+            if (!requireCloudLogin('delete income')) return;
             if (!state.editingMealId) return;
             const id = state.editingMealId;
             if(!confirm("Delete this income entry?")) return;
@@ -2797,6 +2817,7 @@
         }
 
         function openModal(id) {
+            if ((id === 'expensesModal' || id === 'mealsModal') && !requireCloudLogin('add or edit records')) return;
             document.getElementById(id).classList.add('open');
             if(id==='inquiryShareModal') {
                 updateInquiryEstimate();
@@ -2954,6 +2975,7 @@
         }
 
         function settleBill(id) {
+            if (!requireCloudLogin('update a payment')) return;
             if(!confirm("Mark as Fully Paid?")) return;
             let updatedBooking = null; let found = false;
             Object.keys(state.bookings).forEach(d => {
@@ -2994,6 +3016,7 @@
             }
         }
         function deleteBooking() {
+            if (!requireCloudLogin('delete a booking')) return;
             if(!confirm("Delete?")) return;
             const id = String(state.viewId || '');
             let deletedId = id;
@@ -3072,6 +3095,10 @@
         }
         function triggerImport() { document.getElementById('fileInput').click(); }
         function importData(input) {
+            if (!requireCloudLogin('restore a backup')) {
+                if (input) input.value = '';
+                return;
+            }
             if (!input.files || !input.files[0]) return;
             const r = new FileReader();
             r.onload = (e) => {
