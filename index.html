@@ -220,6 +220,17 @@
             padding-bottom: calc(30px + var(--safe-bottom));
             max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
+        .txn-sheet {
+            display: flex; flex-direction: column; height: 90vh; overflow: hidden;
+        }
+        .txn-sheet-scroll {
+            flex: 1; min-height: 0; overflow-y: auto; padding-right: 2px;
+        }
+        .txn-sheet-footer {
+            background: var(--card); padding-top: 12px; margin-top: 12px;
+            border-top: 1px solid var(--border);
+            padding-bottom: var(--safe-bottom);
+        }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
         /* Full Screen Search Modal */
@@ -254,7 +265,7 @@
         .form-card { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 14px; margin-bottom: 16px; }
         .form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
         .form-grid.two { grid-template-columns: 1fr 0.8fr; }
-        .txn-list { max-height: 330px; overflow-y: auto; display: grid; gap: 10px; padding-right: 2px; }
+        .txn-list { display: grid; gap: 10px; padding-right: 2px; }
         .txn-card {
             background: var(--bg); border: 1px solid var(--border); border-radius: 14px;
             padding: 12px; display: grid; gap: 8px;
@@ -590,81 +601,89 @@
 
     <!-- EXPENSES MODAL -->
     <div class="modal-overlay" id="expensesModal">
-        <div class="sheet">
-            <h3 style="margin-top:0;">Expenses</h3>
-            <div id="expensesMonthHint" style="color:var(--text-light); font-weight:600; margin-bottom:10px;"></div>
-            <div class="form-card">
-                <div class="input-group">
-                    <label class="input-label">Description</label>
-                    <input type="text" id="exDesc" class="input-field" placeholder="e.g. Electricity bill">
-                </div>
-                <div class="form-grid two">
+        <div class="sheet txn-sheet">
+            <div class="txn-sheet-scroll">
+                <h3 style="margin-top:0;">Expenses</h3>
+                <div id="expensesMonthHint" style="color:var(--text-light); font-weight:600; margin-bottom:10px;"></div>
+                <div class="form-card">
                     <div class="input-group">
-                        <label class="input-label">Amount</label>
-                        <input type="number" id="exAmount" class="input-field" placeholder="0">
+                        <label class="input-label">Description</label>
+                        <input type="text" id="exDesc" class="input-field" placeholder="e.g. Electricity bill">
+                    </div>
+                    <div class="form-grid two">
+                        <div class="input-group">
+                            <label class="input-label">Amount</label>
+                            <input type="number" id="exAmount" class="input-field" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Date</label>
+                            <input type="date" id="exDate" class="input-field">
+                        </div>
                     </div>
                     <div class="input-group">
-                        <label class="input-label">Date</label>
-                        <input type="date" id="exDate" class="input-field">
+                        <label class="input-label">Category</label>
+                        <select id="exCategory" class="input-field">
+                            <option value="villa">Villa Expense</option>
+                            <option value="home">Home Expense</option>
+                            <option value="uncategorized">Uncategorized</option>
+                        </select>
                     </div>
+                    <button id="btnAddExpense" class="btn btn-primary" onclick="addExpense()" style="margin-top:0; padding:12px;">+ Add Expense</button>
                 </div>
-                <div class="input-group">
-                    <label class="input-label">Category</label>
-                    <select id="exCategory" class="input-field">
-                        <option value="villa">Villa Expense</option>
-                        <option value="home">Home Expense</option>
-                        <option value="uncategorized">Uncategorized</option>
-                    </select>
+                <div class="txn-filter-tabs">
+                    <button id="expenseFilterAll" class="txn-filter-tab active" onclick="setExpenseFilter('all')">All</button>
+                    <button id="expenseFilterVilla" class="txn-filter-tab" onclick="setExpenseFilter('villa')">Villa</button>
+                    <button id="expenseFilterHome" class="txn-filter-tab" onclick="setExpenseFilter('home')">Home</button>
+                    <button id="expenseFilterUncategorized" class="txn-filter-tab" onclick="setExpenseFilter('uncategorized')">Uncategorized</button>
                 </div>
-                <button id="btnAddExpense" class="btn btn-primary" onclick="addExpense()" style="margin-top:0; padding:12px;">+ Add Expense</button>
+                <div id="expensesList" class="txn-list"></div>
             </div>
-            <div class="txn-filter-tabs">
-                <button id="expenseFilterAll" class="txn-filter-tab active" onclick="setExpenseFilter('all')">All</button>
-                <button id="expenseFilterVilla" class="txn-filter-tab" onclick="setExpenseFilter('villa')">Villa</button>
-                <button id="expenseFilterHome" class="txn-filter-tab" onclick="setExpenseFilter('home')">Home</button>
-                <button id="expenseFilterUncategorized" class="txn-filter-tab" onclick="setExpenseFilter('uncategorized')">Uncategorized</button>
+            <div class="txn-sheet-footer">
+                <button class="btn btn-outline" onclick="closeModal('expensesModal')" style="margin-top:0;">Close</button>
             </div>
-            <div id="expensesList" class="txn-list"></div>
-            <button class="btn btn-outline" onclick="closeModal('expensesModal')">Close</button>
         </div>
     </div>
 
     <!-- MEALS MODAL -->
     <div class="modal-overlay" id="mealsModal">
-        <div class="sheet">
-            <h3 style="margin-top:0;">Income</h3>
-            <div id="mealsMonthHint" style="color:var(--text-light); font-weight:600; margin-bottom:10px;"></div>
-            <div class="form-card">
-                <div class="input-group">
-                    <label class="input-label">Description</label>
-                    <input type="text" id="mealDesc" class="input-field" placeholder="e.g. Breakfast, salary">
-                </div>
-                <div class="form-grid two">
+        <div class="sheet txn-sheet">
+            <div class="txn-sheet-scroll">
+                <h3 style="margin-top:0;">Income</h3>
+                <div id="mealsMonthHint" style="color:var(--text-light); font-weight:600; margin-bottom:10px;"></div>
+                <div class="form-card">
                     <div class="input-group">
-                        <label class="input-label">Amount</label>
-                        <input type="number" id="mealAmount" class="input-field" placeholder="0">
+                        <label class="input-label">Description</label>
+                        <input type="text" id="mealDesc" class="input-field" placeholder="e.g. Breakfast, salary">
+                    </div>
+                    <div class="form-grid two">
+                        <div class="input-group">
+                            <label class="input-label">Amount</label>
+                            <input type="number" id="mealAmount" class="input-field" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Date</label>
+                            <input type="date" id="mealDate" class="input-field">
+                        </div>
                     </div>
                     <div class="input-group">
-                        <label class="input-label">Date</label>
-                        <input type="date" id="mealDate" class="input-field">
+                        <label class="input-label">Income Source</label>
+                        <select id="mealSource" class="input-field">
+                            <option value="meals">Meal Income</option>
+                            <option value="other">Other Income</option>
+                        </select>
                     </div>
+                    <button id="btnAddMeal" class="btn btn-primary" onclick="addMeal()" style="margin-top:0; padding:12px;">+ Add Income</button>
                 </div>
-                <div class="input-group">
-                    <label class="input-label">Income Source</label>
-                    <select id="mealSource" class="input-field">
-                        <option value="meals">Meal Income</option>
-                        <option value="other">Other Income</option>
-                    </select>
+                <div class="txn-filter-tabs">
+                    <button id="incomeFilterAll" class="txn-filter-tab active" onclick="setIncomeFilter('all')">All</button>
+                    <button id="incomeFilterMeals" class="txn-filter-tab" onclick="setIncomeFilter('meals')">Meals</button>
+                    <button id="incomeFilterOther" class="txn-filter-tab" onclick="setIncomeFilter('other')">Other</button>
                 </div>
-                <button id="btnAddMeal" class="btn btn-primary" onclick="addMeal()" style="margin-top:0; padding:12px;">+ Add Income</button>
+                <div id="mealsList" class="txn-list"></div>
             </div>
-            <div class="txn-filter-tabs">
-                <button id="incomeFilterAll" class="txn-filter-tab active" onclick="setIncomeFilter('all')">All</button>
-                <button id="incomeFilterMeals" class="txn-filter-tab" onclick="setIncomeFilter('meals')">Meals</button>
-                <button id="incomeFilterOther" class="txn-filter-tab" onclick="setIncomeFilter('other')">Other</button>
+            <div class="txn-sheet-footer">
+                <button class="btn btn-outline" onclick="closeModal('mealsModal')" style="margin-top:0;">Close</button>
             </div>
-            <div id="mealsList" class="txn-list"></div>
-            <button class="btn btn-outline" onclick="closeModal('mealsModal')">Close</button>
         </div>
     </div>
 
