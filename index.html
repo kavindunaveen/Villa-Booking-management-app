@@ -352,14 +352,19 @@
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
                     <div style="font-size:1.1rem; font-weight:700;">Financials</div>
                     <div style="display:flex; align-items:center; gap:10px; background:var(--bg); padding:4px 12px; border-radius:20px;">
-                        <i class="fas fa-chevron-left" onclick="changeMonth(-1)" style="cursor:pointer; color:var(--text-light); font-size:0.9rem;"></i>
+                        <i class="fas fa-chevron-left" onclick="changeFinanceRange(-1)" style="cursor:pointer; color:var(--text-light); font-size:0.9rem;"></i>
                         <span id="menuMonthName" style="font-weight:600; font-size:0.9rem; color:var(--text-main); min-width:100px; text-align:center;"></span>
-                        <i class="fas fa-chevron-right" onclick="changeMonth(1)" style="cursor:pointer; color:var(--text-light); font-size:0.9rem;"></i>
+                        <i class="fas fa-chevron-right" onclick="changeFinanceRange(1)" style="cursor:pointer; color:var(--text-light); font-size:0.9rem;"></i>
                     </div>
+                </div>
+                <div class="cal-controls" style="margin-bottom:12px;">
+                    <div id="financeDayChip" class="cal-chip" onclick="setFinancePeriod('day')">Day</div>
+                    <div id="financeWeekChip" class="cal-chip" onclick="setFinancePeriod('week')">Week</div>
+                    <div id="financeMonthChip" class="cal-chip active" onclick="setFinancePeriod('month')">Month</div>
                 </div>
                 
                 <div class="finance-section">
-                    <div class="finance-section-title">This Month's Bookings</div>
+                    <div class="finance-section-title">Bookings</div>
                     <div class="stat-row"><span>Number of Bookings</span><span id="menuBookingCount" style="font-weight:700">0</span></div>
                     <div class="stat-row"><span>Booked Nights</span><span id="menuBookedNights" style="font-weight:700">0</span></div>
                     <div class="stat-row"><span>Total Booking Value</span><span id="menuCollected" style="font-weight:700">Rs 0</span></div>
@@ -372,18 +377,32 @@
                 </div>
 
                 <div class="finance-section">
-                    <div class="finance-section-title">Income Summary</div>
+                    <div class="finance-section-title">Business Income</div>
                     <div class="stat-row"><span>Booking Amount Received</span><span id="menuIncomeAdvances" style="color:var(--success)">Rs 0</span></div>
                     <div class="stat-row"><span>Meal Income</span><span id="menuMeals" style="color:var(--success)">Rs 0</span></div>
-                    <div class="stat-row"><span>Expenses</span><span id="menuExpenses" style="color:var(--danger)">Rs 0</span></div>
-                    <div class="stat-row finance-total" style="font-size:1.05rem;"><span>Estimated Cash Profit</span><span id="menuProfitFinal" style="font-weight:800; color:var(--primary)">Rs 0</span></div>
+                    <div class="stat-row"><span>Other Income</span><span id="menuOtherIncome" style="color:var(--success)">Rs 0</span></div>
+                    <div class="stat-row finance-total"><span>Total Business Income</span><span id="menuTotalBusinessIncome" style="color:var(--success)">Rs 0</span></div>
                 </div>
-                <div class="finance-note">Estimated Cash Profit = Booking Amount Received + Meal Income - Expenses</div>
+
+                <div class="finance-section">
+                    <div class="finance-section-title">Expenses</div>
+                    <div class="stat-row"><span>Villa Expenses</span><span id="menuVillaExpenses" style="color:var(--danger)">Rs 0</span></div>
+                    <div class="stat-row"><span>Home Expenses</span><span id="menuHomeExpenses" style="color:var(--danger)">Rs 0</span></div>
+                    <div class="stat-row"><span>Uncategorized Expenses</span><span id="menuUncategorizedExpenses" style="color:var(--danger)">Rs 0</span></div>
+                    <div class="stat-row finance-total"><span>Total Expenses</span><span id="menuExpenses" style="color:var(--danger)">Rs 0</span></div>
+                </div>
+
+                <div class="finance-section">
+                    <div class="finance-section-title">Profit View</div>
+                    <div class="stat-row"><span>Villa Profit</span><span id="menuProfitFinal" style="font-weight:800; color:var(--primary)">Rs 0</span></div>
+                    <div class="stat-row finance-total" style="font-size:1.05rem;"><span>Cash After Home Expenses</span><span id="menuCashAfterHome" style="font-weight:800; color:var(--primary)">Rs 0</span></div>
+                </div>
+                <div class="finance-note">Villa Profit = business income - villa expenses. Home expenses are shown separately and only reduce Cash After Home Expenses.</div>
             </div>
 
             <div class="menu-list">
                 <div class="menu-row" onclick="openModal('mealsModal')">
-                    <span><i class="fas fa-utensils"></i> Meals</span>
+                    <span><i class="fas fa-hand-holding-usd"></i> Income</span>
                     <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i>
                 </div>
                 <div class="menu-row" onclick="openModal('expensesModal')">
@@ -537,9 +556,17 @@
                 <input type="number" id="exAmount" class="input-field" placeholder="Amount" style="flex:1">
             </div>
             <div style="margin-bottom:15px;">
+                <select id="exCategory" class="input-field">
+                    <option value="villa">Villa Expense</option>
+                    <option value="home">Home Expense</option>
+                    <option value="uncategorized">Uncategorized</option>
+                </select>
+            </div>
+            <div style="margin-bottom:15px;">
                 <input type="date" id="exDate" class="input-field">
             </div>
-            <button class="btn btn-primary" onclick="addExpense()" style="margin-top:0; margin-bottom:20px; padding:12px;">+ Add Expense</button>
+            <button id="btnAddExpense" class="btn btn-primary" onclick="addExpense()" style="margin-top:0; margin-bottom:8px; padding:12px;">+ Add Expense</button>
+            <button id="btnCancelExpenseEdit" class="btn btn-outline" onclick="clearExpenseForm()" style="display:none; margin-top:0; margin-bottom:20px; padding:12px;">Cancel Edit</button>
             <div id="expensesList" style="max-height:300px; overflow-y:auto;"></div>
             <button class="btn btn-outline" onclick="closeModal('expensesModal')">Close</button>
         </div>
@@ -548,16 +575,23 @@
     <!-- MEALS MODAL -->
     <div class="modal-overlay" id="mealsModal">
         <div class="sheet">
-            <h3 style="margin-top:0;">Meals Income</h3>
+            <h3 style="margin-top:0;">Income</h3>
             <div id="mealsMonthHint" style="color:var(--text-light); font-weight:600; margin-bottom:10px;"></div>
             <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <input type="text" id="mealDesc" class="input-field" placeholder="Description (e.g. Breakfast)" style="flex:2">
+                <input type="text" id="mealDesc" class="input-field" placeholder="Description (e.g. Breakfast, Salary)" style="flex:2">
                 <input type="number" id="mealAmount" class="input-field" placeholder="Amount" style="flex:1">
+            </div>
+            <div style="margin-bottom:15px;">
+                <select id="mealSource" class="input-field">
+                    <option value="meals">Meal Income</option>
+                    <option value="other">Other Income</option>
+                </select>
             </div>
             <div style="margin-bottom:15px;">
                 <input type="date" id="mealDate" class="input-field">
             </div>
-            <button class="btn btn-primary" onclick="addMeal()" style="margin-top:0; margin-bottom:20px; padding:12px;">+ Add Meal</button>
+            <button id="btnAddMeal" class="btn btn-primary" onclick="addMeal()" style="margin-top:0; margin-bottom:8px; padding:12px;">+ Add Income</button>
+            <button id="btnCancelMealEdit" class="btn btn-outline" onclick="clearMealForm()" style="display:none; margin-top:0; margin-bottom:20px; padding:12px;">Cancel Edit</button>
             <div id="mealsList" style="max-height:300px; overflow-y:auto;"></div>
             <button class="btn btn-outline" onclick="closeModal('mealsModal')">Close</button>
         </div>
@@ -601,10 +635,13 @@
             expenses: JSON.parse(localStorage.getItem('hotelExpenses_v1')) || [],
             meals: JSON.parse(localStorage.getItem('hotelMeals_v1')) || [],
             activeTab: 'home',
+            financePeriod: 'month',
             filterRoom: 'All',
             selection: [],
             viewId: null,
             editingId: null,
+            editingExpenseId: null,
+            editingMealId: null,
             showHistory: false,
             roomPickerDate: null,
             roomPickerSelection: [],
@@ -629,12 +666,58 @@
             return `${d}.${m}.${y}`;
         };
         const getMonthKey = (dateStr) => String(dateStr || '').slice(0, 7);
+        const addDays = (date, days) => {
+            const next = new Date(date);
+            next.setDate(next.getDate() + days);
+            return next;
+        };
         const formatMonthLabel = (ym) => {
             if (!/^\d{4}-\d{2}$/.test(ym || '')) return 'Unknown Month';
             const [yy, mm] = ym.split('-').map(Number);
             return new Date(yy, mm - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         };
         const getSelectedMonthKey = () => getLocalYMD(state.viewDate).slice(0, 7);
+        function getFinancePeriodRange() {
+            const base = new Date(state.viewDate);
+            let start;
+            let end;
+            if (state.financePeriod === 'day') {
+                start = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+                end = addDays(start, 1);
+            } else if (state.financePeriod === 'week') {
+                const day = base.getDay();
+                const mondayOffset = day === 0 ? -6 : 1 - day;
+                start = new Date(base.getFullYear(), base.getMonth(), base.getDate() + mondayOffset);
+                end = addDays(start, 7);
+            } else {
+                start = new Date(base.getFullYear(), base.getMonth(), 1);
+                end = new Date(base.getFullYear(), base.getMonth() + 1, 1);
+            }
+            const startYmd = getLocalYMD(start);
+            const endYmd = getLocalYMD(end);
+            const lastDisplay = getLocalYMD(addDays(end, -1));
+            let label = formatMonthLabel(startYmd.slice(0, 7));
+            if (state.financePeriod === 'day') label = formatDateDMY(startYmd);
+            if (state.financePeriod === 'week') label = `${formatDateDMY(startYmd)} - ${formatDateDMY(lastDisplay)}`;
+            return { startYmd, endYmd, label };
+        }
+        function isDateInRange(dateStr, range) {
+            return /^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || '')) && dateStr >= range.startYmd && dateStr < range.endYmd;
+        }
+        function setFinancePeriod(period) {
+            state.financePeriod = period;
+            renderMenu();
+        }
+        function changeFinanceRange(dir) {
+            if (state.financePeriod === 'day') state.viewDate.setDate(state.viewDate.getDate() + dir);
+            else if (state.financePeriod === 'week') state.viewDate.setDate(state.viewDate.getDate() + (dir * 7));
+            else state.viewDate.setMonth(state.viewDate.getMonth() + dir);
+            renderCalendar();
+            renderMenu();
+            refreshTxnModalContext();
+            renderExpensesList();
+            renderMealsList();
+        }
         function isCloudConfigured() {
             return true;
         }
@@ -741,6 +824,10 @@
             localStorage.setItem('hotelExpenses_v1', JSON.stringify(state.expenses));
             if (expense && expense.id != null) queueCloudOperation('PUT', `expenses/${encodeURIComponent(String(expense.id))}`, expense);
         }
+        function deleteExpenseFromCloud(id) {
+            localStorage.setItem('hotelExpenses_v1', JSON.stringify(state.expenses));
+            queueCloudOperation('DELETE', `expenses/${encodeURIComponent(String(id))}`);
+        }
         function persistMealToCloud(meal) {
             localStorage.setItem('hotelMeals_v1', JSON.stringify(state.meals));
             if (meal && meal.id != null) queueCloudOperation('PUT', `meals/${encodeURIComponent(String(meal.id))}`, meal);
@@ -757,7 +844,7 @@
         }
         function uploadThisDeviceToCloud() {
             if (!isCloudConfigured()) return alert('Enter and save the cloud sync settings first.');
-            if (!confirm('Replace the cloud bookings, expenses, and meals with the data currently on this device?')) return;
+            if (!confirm('Replace the cloud bookings, expenses, and income with the data currently on this device?')) return;
             replaceCloudWithLocalData();
             setCloudSyncStatus('syncing', 'Uploading this device data...');
         }
@@ -905,7 +992,9 @@
                 id: item && item.id ? String(item.id) : `${kind}_${Date.now()}_${idx}`,
                 date: (item && typeof item.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.date)) ? item.date : getLocalYMD(new Date()),
                 desc: item && item.desc ? item.desc : '',
-                amount: item && item.amount != null ? item.amount : 0
+                amount: item && item.amount != null ? item.amount : 0,
+                ...(kind === 'expense' ? { category: item && item.category ? item.category : 'uncategorized' } : {}),
+                ...(kind === 'meal' ? { source: item && item.source ? item.source : 'meals' } : {})
             }));
         }
         function normalizePaymentHistory(entries) {
@@ -1298,8 +1387,8 @@
             const mealHint = document.getElementById('mealsMonthHint');
             const exDate = document.getElementById('exDate');
             const mealDate = document.getElementById('mealDate');
-            if (exHint) exHint.innerText = `Dashboard month: ${monthLabel}`;
-            if (mealHint) mealHint.innerText = `Dashboard month: ${monthLabel}`;
+            if (exHint) exHint.innerText = `Showing entries for ${monthLabel}`;
+            if (mealHint) mealHint.innerText = `Showing entries for ${monthLabel}`;
             if (exDate && !exDate.value) exDate.value = getDefaultTxnDateForSelectedMonth();
             if (mealDate && !mealDate.value) mealDate.value = getDefaultTxnDateForSelectedMonth();
         }
@@ -1803,16 +1892,45 @@
         }
 
         // --- EXPENSES ---
+        function updateExpenseFormMode() {
+            const isEditing = !!state.editingExpenseId;
+            const btn = document.getElementById('btnAddExpense');
+            const cancel = document.getElementById('btnCancelExpenseEdit');
+            if (btn) btn.innerText = isEditing ? 'Update Expense' : '+ Add Expense';
+            if (cancel) cancel.style.display = isEditing ? 'block' : 'none';
+        }
+        function clearExpenseForm() {
+            state.editingExpenseId = null;
+            document.getElementById('exDesc').value = '';
+            document.getElementById('exAmount').value = '';
+            document.getElementById('exCategory').value = 'villa';
+            document.getElementById('exDate').value = getDefaultTxnDateForSelectedMonth();
+            updateExpenseFormMode();
+        }
+        function editExpense(id) {
+            const expense = state.expenses.find(e => String(e.id) === String(id));
+            if (!expense) return;
+            state.editingExpenseId = String(id);
+            document.getElementById('exDesc').value = expense.desc || '';
+            document.getElementById('exAmount').value = expense.amount || '';
+            document.getElementById('exCategory').value = expense.category || 'uncategorized';
+            document.getElementById('exDate').value = expense.date || getDefaultTxnDateForSelectedMonth();
+            updateExpenseFormMode();
+        }
         function addExpense() {
             const desc = document.getElementById('exDesc').value; const amt = document.getElementById('exAmount').value;
             const exDate = document.getElementById('exDate').value || getDefaultTxnDateForSelectedMonth();
+            const category = document.getElementById('exCategory').value || 'uncategorized';
             if(!desc || !amt) return;
-            const expense = { id: Date.now().toString(), date: exDate, desc, amount: amt };
-            state.expenses.push(expense);
+            const expense = { id: state.editingExpenseId || Date.now().toString(), date: exDate, desc, amount: amt, category };
+            if (state.editingExpenseId) {
+                state.expenses = state.expenses.map(item => String(item.id) === String(state.editingExpenseId) ? expense : item);
+            } else {
+                state.expenses.push(expense);
+            }
             persistExpenseToCloud(expense);
             renderExpensesList(); renderMenu();
-            document.getElementById('exDesc').value = ''; document.getElementById('exAmount').value = '';
-            document.getElementById('exDate').value = getDefaultTxnDateForSelectedMonth();
+            clearExpenseForm();
         }
         function renderExpensesList() {
             const list = document.getElementById('expensesList'); list.innerHTML = '';
@@ -1828,39 +1946,73 @@
             const subtotal = items.reduce((sum, x) => sum + (parseFloat(x.amount) || 0), 0);
             list.innerHTML += `<div style="position:sticky; top:0; background:var(--card); padding:10px 12px; border-bottom:1px solid var(--border); border-top:1px solid var(--border); font-weight:700; z-index:1; color:var(--primary);">${formatMonthLabel(selectedMonth)} <span style="float:right; color:var(--danger); font-weight:700;">Rs ${subtotal.toLocaleString()}</span></div>`;
             items.forEach(e => {
-                list.innerHTML += `<div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border)"><span>${e.desc} <small style="color:var(--text-light)">(${e.date})</small></span><span style="color:var(--danger)">-Rs ${e.amount}</span></div>`;
+                const category = e.category || 'uncategorized';
+                const categoryLabel = category === 'villa' ? 'Villa' : category === 'home' ? 'Home' : 'Uncategorized';
+                list.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid var(--border); gap:10px;"><span onclick="editExpense('${e.id}')" style="cursor:pointer; flex:1;">${e.desc} <small style="color:var(--text-light)">(${e.date} · ${categoryLabel})</small></span><span style="color:var(--danger); white-space:nowrap;">-Rs ${e.amount}</span><i class="fas fa-pen" style="color:var(--primary); cursor:pointer;" onclick="editExpense('${e.id}')"></i><i class="fas fa-trash" style="color:var(--danger); cursor:pointer;" onclick="deleteExpense('${e.id}')"></i></div>`;
             });
         }
+        function deleteExpense(id) { if(!confirm("Delete?")) return; state.expenses = state.expenses.filter(e => String(e.id) !== String(id)); if(String(state.editingExpenseId) === String(id)) clearExpenseForm(); deleteExpenseFromCloud(id); renderExpensesList(); renderMenu(); }
 
+        function updateMealFormMode() {
+            const isEditing = !!state.editingMealId;
+            const btn = document.getElementById('btnAddMeal');
+            const cancel = document.getElementById('btnCancelMealEdit');
+            if (btn) btn.innerText = isEditing ? 'Update Income' : '+ Add Income';
+            if (cancel) cancel.style.display = isEditing ? 'block' : 'none';
+        }
+        function clearMealForm() {
+            state.editingMealId = null;
+            document.getElementById('mealDesc').value = '';
+            document.getElementById('mealAmount').value = '';
+            document.getElementById('mealSource').value = 'meals';
+            document.getElementById('mealDate').value = getDefaultTxnDateForSelectedMonth();
+            updateMealFormMode();
+        }
+        function editMeal(id) {
+            const meal = state.meals.find(m => String(m.id) === String(id));
+            if (!meal) return;
+            state.editingMealId = String(id);
+            document.getElementById('mealDesc').value = meal.desc || '';
+            document.getElementById('mealAmount').value = meal.amount || '';
+            document.getElementById('mealSource').value = meal.source || 'meals';
+            document.getElementById('mealDate').value = meal.date || getDefaultTxnDateForSelectedMonth();
+            updateMealFormMode();
+        }
         function addMeal() {
             const desc = document.getElementById('mealDesc').value; const amt = document.getElementById('mealAmount').value;
             const mealDate = document.getElementById('mealDate').value || getDefaultTxnDateForSelectedMonth();
+            const source = document.getElementById('mealSource').value || 'meals';
             if(!desc || !amt) return;
-            const meal = { id: Date.now().toString(), date: mealDate, desc, amount: amt };
-            state.meals.push(meal);
+            const meal = { id: state.editingMealId || Date.now().toString(), date: mealDate, desc, amount: amt, source };
+            if (state.editingMealId) {
+                state.meals = state.meals.map(item => String(item.id) === String(state.editingMealId) ? meal : item);
+            } else {
+                state.meals.push(meal);
+            }
             persistMealToCloud(meal);
             renderMealsList(); renderMenu();
-            document.getElementById('mealDesc').value = ''; document.getElementById('mealAmount').value = '';
-            document.getElementById('mealDate').value = getDefaultTxnDateForSelectedMonth();
+            clearMealForm();
         }
         function renderMealsList() {
             const list = document.getElementById('mealsList'); list.innerHTML = '';
-            if(state.meals.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No meals income yet</p>'; return; }
+            if(state.meals.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No income yet</p>'; return; }
             const selectedMonth = getSelectedMonthKey();
             const items = state.meals
                 .filter(e => getMonthKey(e.date) === selectedMonth)
                 .sort((a,b) => String(b.date).localeCompare(String(a.date)));
             if(items.length === 0) {
-                list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No meals income for this month</p>';
+                list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No income for this month</p>';
                 return;
             }
             const subtotal = items.reduce((sum, x) => sum + (parseFloat(x.amount) || 0), 0);
             list.innerHTML += `<div style="position:sticky; top:0; background:var(--card); padding:10px 12px; border-bottom:1px solid var(--border); border-top:1px solid var(--border); font-weight:700; z-index:1; color:var(--primary);">${formatMonthLabel(selectedMonth)} <span style="float:right; color:var(--success); font-weight:700;">Rs ${subtotal.toLocaleString()}</span></div>`;
             items.forEach(e => {
-                list.innerHTML += `<div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border)"><span>${e.desc} <small style="color:var(--text-light)">(${e.date})</small></span><span style="color:var(--success)">+Rs ${e.amount}</span><i class="fas fa-trash" style="color:var(--danger); cursor:pointer; margin-left:10px;" onclick="deleteMeal('${e.id}')"></i></div>`;
+                const source = e.source || 'meals';
+                const sourceLabel = source === 'other' ? 'Other Income' : 'Meal Income';
+                list.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid var(--border); gap:10px;"><span onclick="editMeal('${e.id}')" style="cursor:pointer; flex:1;">${e.desc} <small style="color:var(--text-light)">(${e.date} · ${sourceLabel})</small></span><span style="color:var(--success); white-space:nowrap;">+Rs ${e.amount}</span><i class="fas fa-pen" style="color:var(--primary); cursor:pointer;" onclick="editMeal('${e.id}')"></i><i class="fas fa-trash" style="color:var(--danger); cursor:pointer;" onclick="deleteMeal('${e.id}')"></i></div>`;
             });
         }
-        function deleteMeal(id) { if(!confirm("Delete?")) return; state.meals = state.meals.filter(m => m.id !== id); deleteMealFromCloud(id); renderMealsList(); renderMenu(); }
+        function deleteMeal(id) { if(!confirm("Delete?")) return; state.meals = state.meals.filter(m => String(m.id) !== String(id)); if(String(state.editingMealId) === String(id)) clearMealForm(); deleteMealFromCloud(id); renderMealsList(); renderMenu(); }
 
         function openModal(id) {
             document.getElementById(id).classList.add('open');
@@ -1868,12 +2020,12 @@
                 updateInquiryEstimate();
             }
             if(id==='expensesModal') {
-                document.getElementById('exDate').value = getDefaultTxnDateForSelectedMonth();
+                clearExpenseForm();
                 refreshTxnModalContext();
                 renderExpensesList();
             }
             if(id==='mealsModal') {
-                document.getElementById('mealDate').value = getDefaultTxnDateForSelectedMonth();
+                clearMealForm();
                 refreshTxnModalContext();
                 renderMealsList();
             }
@@ -1882,6 +2034,8 @@
             document.getElementById(id).classList.remove('open');
             if(id==='bookingModal') { state.selection=[]; state.editingId=null; state.bookingRoomsLocked=false; state.lockedBookingRooms=[]; renderCalendar(); }
             if(id==='roomPickerModal') { state.roomPickerDate = null; state.roomPickerSelection = []; }
+            if(id==='expensesModal') clearExpenseForm();
+            if(id==='mealsModal') clearMealForm();
         }
         function toggleTheme() { const t = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.body.setAttribute('data-theme', t); localStorage.setItem('theme', t); }
         
@@ -2117,17 +2271,16 @@
 
         // --- MENU LOGIC ---
         function renderMenu() {
-            const m = getLocalYMD(state.viewDate).slice(0, 7);
-            const monthName = state.viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+            const range = getFinancePeriodRange();
             
             let bookingCount = 0; let bookedNights = 0; let bookingValue = 0; let amountReceived = 0;
-            let mealIncome = 0; let expense = 0; let outstanding = 0;
+            let mealIncome = 0; let otherIncome = 0; let villaExpense = 0; let homeExpense = 0; let uncategorizedExpense = 0; let outstanding = 0;
             let overdueBalances = 0; let upcomingBalances = 0; let seen = new Set();
             const today = getLocalYMD(new Date());
             
-            // Monthly booking figures all use the booking check-in month.
+            // Booking figures use the booking check-in date inside the selected financial period.
             Object.values(state.bookings).flat().forEach(b => {
-                if(!seen.has(b.id) && b.range[0].startsWith(m)) { 
+                if(!seen.has(b.id) && isDateInRange(b.range[0], range)) {
                     seen.add(b.id); 
                     bookingCount += 1;
                     bookedNights += Array.isArray(b.range) ? b.range.length : 0;
@@ -2144,26 +2297,52 @@
                 }
             });
 
-            state.expenses.forEach(e => { if(e.date.startsWith(m)) expense += parseFloat(e.amount); });
-            state.meals.forEach(e => { if(e.date.startsWith(m)) mealIncome += parseFloat(e.amount); });
+            state.expenses.forEach(e => {
+                if(!isDateInRange(e.date, range)) return;
+                const amount = parseFloat(e.amount) || 0;
+                const category = e.category || 'uncategorized';
+                if (category === 'villa') villaExpense += amount;
+                else if (category === 'home') homeExpense += amount;
+                else uncategorizedExpense += amount;
+            });
+            state.meals.forEach(e => {
+                if(!isDateInRange(e.date, range)) return;
+                const amount = parseFloat(e.amount) || 0;
+                if ((e.source || 'meals') === 'other') otherIncome += amount;
+                else mealIncome += amount;
+            });
             
             const collectionRate = bookingValue > 0 ? Math.round((amountReceived / bookingValue) * 100) : 0;
-            document.getElementById('menuMonthName').innerText = `(${monthName})`;
+            const totalBusinessIncome = amountReceived + mealIncome + otherIncome;
+            const totalExpenses = villaExpense + homeExpense + uncategorizedExpense;
+            const villaProfit = totalBusinessIncome - villaExpense;
+            const cashAfterHome = totalBusinessIncome - totalExpenses;
+
+            document.getElementById('menuMonthName').innerText = range.label;
+            document.getElementById('financeDayChip').classList.toggle('active', state.financePeriod === 'day');
+            document.getElementById('financeWeekChip').classList.toggle('active', state.financePeriod === 'week');
+            document.getElementById('financeMonthChip').classList.toggle('active', state.financePeriod === 'month');
             document.getElementById('menuBookingCount').innerText = bookingCount.toLocaleString();
             document.getElementById('menuBookedNights').innerText = bookedNights.toLocaleString();
             document.getElementById('menuAdvances').innerText = `Rs ${amountReceived.toLocaleString()}`;
             document.getElementById('menuIncomeAdvances').innerText = `Rs ${amountReceived.toLocaleString()}`;
             document.getElementById('menuMeals').innerText = `Rs ${mealIncome.toLocaleString()}`;
+            document.getElementById('menuOtherIncome').innerText = `Rs ${otherIncome.toLocaleString()}`;
+            document.getElementById('menuTotalBusinessIncome').innerText = `Rs ${totalBusinessIncome.toLocaleString()}`;
             document.getElementById('menuCollected').innerText = `Rs ${bookingValue.toLocaleString()}`;
             document.getElementById('menuPending').innerText = `Rs ${outstanding.toLocaleString()}`;
             document.getElementById('menuOverdueBalances').innerText = `Rs ${overdueBalances.toLocaleString()}`;
             document.getElementById('menuUpcomingBalances').innerText = `Rs ${upcomingBalances.toLocaleString()}`;
             document.getElementById('menuCollectionRate').innerText = `${collectionRate}%`;
             document.getElementById('menuCollectionProgressBar').style.width = `${Math.min(100, collectionRate)}%`;
-            document.getElementById('menuExpenses').innerText = `Rs ${expense.toLocaleString()}`;
-            const profit = amountReceived + mealIncome - expense;
-            document.getElementById('menuProfitFinal').innerText = `Rs ${profit.toLocaleString()}`;
-            document.getElementById('menuProfitFinal').style.color = profit >= 0 ? 'var(--primary)' : 'var(--danger)';
+            document.getElementById('menuVillaExpenses').innerText = `Rs ${villaExpense.toLocaleString()}`;
+            document.getElementById('menuHomeExpenses').innerText = `Rs ${homeExpense.toLocaleString()}`;
+            document.getElementById('menuUncategorizedExpenses').innerText = `Rs ${uncategorizedExpense.toLocaleString()}`;
+            document.getElementById('menuExpenses').innerText = `Rs ${totalExpenses.toLocaleString()}`;
+            document.getElementById('menuProfitFinal').innerText = `Rs ${villaProfit.toLocaleString()}`;
+            document.getElementById('menuProfitFinal').style.color = villaProfit >= 0 ? 'var(--primary)' : 'var(--danger)';
+            document.getElementById('menuCashAfterHome').innerText = `Rs ${cashAfterHome.toLocaleString()}`;
+            document.getElementById('menuCashAfterHome').style.color = cashAfterHome >= 0 ? 'var(--primary)' : 'var(--danger)';
         }
 
     </script>
