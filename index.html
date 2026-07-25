@@ -1618,6 +1618,9 @@
             }
             return parseFloat((booking && booking.advance) || 0) || 0;
         }
+        function getBookingBalance(booking) {
+            return (parseFloat((booking && booking.total) || 0) || 0) - getBookingCollectedTotal(booking);
+        }
         function getBookingCollectedForMonth(booking, monthKey) {
             const paymentHistory = getBookingPaymentHistory(booking);
             if (paymentHistory.length > 0) {
@@ -1772,7 +1775,7 @@
             results.forEach(b => {
                 const div = document.createElement('div'); div.className = 'agenda-item';
                 div.style.borderLeftColor = getBookingSetupColor(b);
-                const bal = (parseFloat(b.total) || 0) - (parseFloat(b.advance) || 0);
+                const bal = getBookingBalance(b);
                 const statusClass = bal <= 0 ? 'status-paid' : 'status-due';
                 const statusText = bal <= 0 ? '(Paid)' : `(Due: Rs ${bal})`;
                 const checkIn = Array.isArray(b.range) && b.range[0] ? b.range[0] : '-';
@@ -1798,7 +1801,7 @@
                        const villaBooking = state.bookings[today].find(b => getBookingRooms(b).some(rm => rm.type === 'Full Villa'));
                        if (villaBooking) {
                            guestName = villaBooking.name;
-                           bal = villaBooking.total - villaBooking.advance;
+                           bal = getBookingBalance(villaBooking);
                            paymentStatus = bal <= 0 ? 'PAID' : `DUE: ${bal}`;
                            statusClass = bal <= 0 ? 'paid' : 'booked';
                        } else {
@@ -1824,7 +1827,7 @@
                                  statusClass = "blocked";
                              } else {
                                  guestName = booking.name; 
-                                 bal = booking.total - booking.advance;
+                                 bal = getBookingBalance(booking);
                                  paymentStatus = bal <= 0 ? 'PAID' : `DUE: ${bal}`;
                                  statusClass = bal <= 0 ? 'paid' : 'booked';
                              }
@@ -2101,22 +2104,19 @@
                 if (relevant.length === 1) {
                     openDetails(relevant[0]);
                 } else {
-                    // Multiple bookings
-                    let content = ``;
+                    const detailsContent = document.getElementById('detailsContent');
+                    detailsContent.innerHTML = '';
                     relevant.forEach(b => {
-                        content += `<div style="padding:12px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between;" onclick="openDetailsByID(${jsArg(b.id)})">
-                            <span><b>${escapeHtml(b.name || b.guestPhone || 'Unknown guest')}</b></span>
-                            <span style="font-size:0.85rem; color:gray">${escapeHtml(getBookingRoomSummary(b))}</span>
-                        </div>`;
+                        const row = document.createElement('div');
+                        row.style.cssText = 'padding:14px 0; border-bottom:1px solid var(--border); cursor:pointer; display:flex; justify-content:space-between; gap:12px; align-items:center;';
+                        const bal = getBookingBalance(b);
+                        const balanceHtml = bal > 0 ? `<div style="font-size:0.75rem; color:var(--danger); margin-top:3px;">Due Rs ${escapeHtml(bal)}</div>` : '<div style="font-size:0.75rem; color:var(--success); margin-top:3px;">Paid</div>';
+                        row.innerHTML = `<div style="min-width:0;"><b>${escapeHtml(b.name || b.guestPhone || 'Unknown guest')}</b>${balanceHtml}</div><span style="font-size:0.85rem; color:gray; text-align:right;">${escapeHtml(getBookingRoomSummary(b))}</span>`;
+                        row.onclick = () => openDetails(b);
+                        detailsContent.appendChild(row);
                     });
-                    document.getElementById('detailsContent').innerHTML = content;
                     document.getElementById('actionButtons').style.display = 'none';
                     openModal('detailsModal');
-                    
-                    window.openDetailsByID = (id) => {
-                       const bk = relevant.find(x=>x.id===id);
-                       if(bk) openDetails(bk);
-                    };
                 }
                 return;
             }
@@ -2857,9 +2857,10 @@
             const range = Array.isArray(b.range) ? b.range : [];
             const checkIn = range[0] || '-';
             const checkOut = range.length ? addDaysToYMD(range[range.length - 1], 1) : '-';
-            const bal = (parseFloat(b.total) || 0) - (parseFloat(b.advance) || 0);
+            const collected = getBookingCollectedTotal(b);
+            const bal = getBookingBalance(b);
             const settleBtn = bal > 0 ? `<button onclick="settleBill(${jsArg(b.id)})" style="background:var(--success); color:white; border:none; padding:5px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.85rem; margin-left:10px;">Settle Now</button>` : '';
-            dDiv.innerHTML = `<div style="background:var(--bg); padding:15px; border-radius:12px;"><div style="font-size:1.2rem; font-weight:700;">${escapeHtml(b.name || b.guestPhone || 'Unknown guest')}</div><div style="color:var(--text-light); margin-top:5px;">${escapeHtml(getBookingRoomSummary(b, true))}</div>${b.guestPhone ? `<div style="font-size:0.85rem; margin-top:5px; color:var(--text-light);">📞 ${escapeHtml(b.guestPhone)}</div>` : ''}${b.source ? `<div style="font-size:0.8rem; margin-top:5px; color:var(--primary); font-weight:600;">Via ${escapeHtml(b.source)}</div>` : ''}</div>${b.notes ? `<div style="background:#FFF3E0; color:#E65100; padding:10px; margin-top:10px; border-radius:8px; font-size:0.9rem;">📝 ${escapeHtml(b.notes)}</div>` : ''}<div style="margin-top:15px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-in</span> <b>${escapeHtml(checkIn)} (2 PM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-out</span> <b>${escapeHtml(checkOut)} (11 AM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; font-size:1.1rem; font-weight:700; align-items:center;"><span>Balance</span> <div style="display:flex; align-items:center;"><span style="color:${bal > 0 ? 'var(--danger)':'var(--success)'}">Rs ${escapeHtml(bal)}</span>${settleBtn}</div></div><div style="margin-top:5px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Total Bill</span> <span>Rs ${escapeHtml(b.total)}</span></div><div style="margin-top:0px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Advance</span> <span>Rs ${escapeHtml(b.advance)}</span></div>`;
+            dDiv.innerHTML = `<div style="background:var(--bg); padding:15px; border-radius:12px;"><div style="font-size:1.2rem; font-weight:700;">${escapeHtml(b.name || b.guestPhone || 'Unknown guest')}</div><div style="color:var(--text-light); margin-top:5px;">${escapeHtml(getBookingRoomSummary(b, true))}</div>${b.guestPhone ? `<div style="font-size:0.85rem; margin-top:5px; color:var(--text-light);">📞 ${escapeHtml(b.guestPhone)}</div>` : ''}${b.source ? `<div style="font-size:0.8rem; margin-top:5px; color:var(--primary); font-weight:600;">Via ${escapeHtml(b.source)}</div>` : ''}</div>${b.notes ? `<div style="background:#FFF3E0; color:#E65100; padding:10px; margin-top:10px; border-radius:8px; font-size:0.9rem;">📝 ${escapeHtml(b.notes)}</div>` : ''}<div style="margin-top:15px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-in</span> <b>${escapeHtml(checkIn)} (2 PM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-out</span> <b>${escapeHtml(checkOut)} (11 AM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; font-size:1.1rem; font-weight:700; align-items:center;"><span>Balance</span> <div style="display:flex; align-items:center;"><span style="color:${bal > 0 ? 'var(--danger)':'var(--success)'}">Rs ${escapeHtml(bal)}</span>${settleBtn}</div></div><div style="margin-top:5px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Total Bill</span> <span>Rs ${escapeHtml(b.total)}</span></div><div style="margin-top:0px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Amount Received</span> <span>Rs ${escapeHtml(collected)}</span></div>`;
             openModal('detailsModal');
             document.getElementById('btnWhatsapp').onclick = () => {
                 window.open(`https://wa.me/?text=${encodeURIComponent(buildWhatsAppBookingText(b))}`);
@@ -2872,8 +2873,8 @@
         }
 
         function buildWhatsAppBookingText(b) {
-            const advance = parseFloat(b.advance) || 0;
-            const balance = (parseFloat(b.total) || 0) - advance;
+            const advance = getBookingCollectedTotal(b);
+            const balance = getBookingBalance(b);
             const roomLines = getBookingRooms(b).map(formatRoomLineForShare).join('\n') || '-';
             const guestPhone = (b.guestPhone || '').trim() || 'Not provided';
             const guestCount = b.guests ? `Guests: ${b.guests}` : '';
@@ -3161,7 +3162,7 @@
                 if (headerText !== lastHeader) { list.innerHTML += `<div class="agenda-header">${headerText}</div>`; lastHeader = headerText; }
                 const div = document.createElement('div'); div.className = 'agenda-item';
                 div.style.borderLeftColor = getBookingSetupColor(b);
-                const bal = (parseFloat(b.total) || 0) - (parseFloat(b.advance) || 0);
+                const bal = getBookingBalance(b);
                 const statusClass = bal <= 0 ? 'status-paid' : 'status-due';
                 const statusText = bal <= 0 ? '(Paid)' : `(Due: Rs ${bal})`;
                 const payBtn = bal > 0 ? `<button class="btn-pay-now" onclick="event.stopPropagation(); settleBill(${jsArg(b.id)})">Pay Now</button>` : '';
