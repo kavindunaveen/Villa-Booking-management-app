@@ -580,7 +580,7 @@
                 <div class="input-group" style="flex:1"><label class="input-label">Guests</label><input type="number" class="input-field" id="guestCount" value="2" oninput="this.dataset.autoGuest='0'"></div>
                 <div class="input-group" style="flex:1"><label class="input-label">Total Bill (Rs)</label><input type="number" class="input-field" id="totalAmount" placeholder="0" oninput="updateBalance()"></div>
             </div>
-            <div class="input-group"><label class="input-label">Advance Paid (Rs)</label><input type="number" class="input-field" id="advance" placeholder="0" oninput="updateBalance()"></div>
+            <div class="input-group"><label class="input-label">Amount Received So Far (Rs)</label><input type="number" class="input-field" id="advance" placeholder="0" oninput="updateBalance()"></div>
             <div class="input-group"><label class="input-label">Notes</label><input type="text" class="input-field" id="bookingNotes" placeholder="e.g. Late check-in"></div>
             <div style="background:var(--bg); padding:15px; border-radius:12px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
                 <span style="color:var(--text-light); font-size:0.9rem;">Balance Due</span><span id="balanceDisplay" style="font-weight:800; font-size:1.1rem; color:var(--primary);">Rs 0</span>
@@ -1298,6 +1298,24 @@
             });
             return result;
         }
+        function collectUniqueBookingsFromDateMap(bookingsByDate) {
+            const result = {};
+            Object.values(bookingsByDate || {}).flat().forEach(booking => {
+                if (booking && booking.id != null) result[String(booking.id)] = booking;
+            });
+            return result;
+        }
+        function normalizeBookingsByDate(input) {
+            if (!input || typeof input !== 'object') return {};
+            const records = Object.values(input).some(Array.isArray)
+                ? collectUniqueBookingsFromDateMap(input)
+                : input;
+            return buildBookingsByDate(records);
+        }
+        function findBookingById(id) {
+            const key = String(id || '');
+            return Object.values(state.bookings).flat().find(booking => String(booking && booking.id) === key) || null;
+        }
         function buildBookingsByDate(records) {
             const result = {};
             Object.values(records || {}).forEach(booking => {
@@ -1430,6 +1448,10 @@
                 syncIncomeAlias();
                 saveLocalData();
                 refreshDataViews();
+                if (cloud.bookings && !cloud.bookingLocks) {
+                    queueCloudOperation('PUT', 'bookingLocks', buildBookingLocksMap());
+                    setTimeout(flushCloudQueue, 0);
+                }
                 setCloudSyncStatus('connected', 'Synced');
             } catch (error) {
                 console.error('Cloud sync download failed:', error);
@@ -1714,9 +1736,11 @@
         });
 
         function initApp() {
+            state.bookings = normalizeBookingsByDate(state.bookings);
             state.expenses = normalizeTxnEntries(state.expenses, 'expense');
             state.meals = normalizeTxnEntries(state.meals, 'meal');
             syncIncomeAlias();
+            saveLocalData();
             renderHome(); renderCalendar(); renderAgenda(); renderMenu();
             const chipCont = document.getElementById('roomFilterContainer');
             if(chipCont) {
@@ -1732,7 +1756,9 @@
             document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
             document.getElementById('tab-' + tabId).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            event.currentTarget.classList.add('active'); 
+            const navItem = Array.from(document.querySelectorAll('.nav-item'))
+                .find(item => item.getAttribute('onclick')?.includes(`'${tabId}'`));
+            if (navItem) navItem.classList.add('active');
             state.activeTab = tabId;
             if (tabId === 'calendar') setTimeout(renderCalendar, 50); // slight delay for smooth transition
             if (tabId === 'home') renderHome();
@@ -1962,8 +1988,6 @@
                 if(c.innerText === ROOMS.find(r=>r.id===roomId)?.name || (roomId==='All' && c.innerText==='All')) c.classList.add('active');
             });
             switchTab('calendar');
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-item')[1].classList.add('active');
         }
 
         // --- CALENDAR ---
@@ -2307,7 +2331,7 @@
             document.getElementById('btnSaveBooking').innerText = editData ? 'Update Booking' : 'Confirm Booking';
             
             document.getElementById('guestPhone').value = editData ? (editData.guestPhone || '') : '';
-            document.getElementById('advance').value = editData ? editData.advance : '';
+            document.getElementById('advance').value = editData ? getBookingCollectedTotal(editData) : '';
             document.getElementById('bookingNotes').value = editData ? editData.notes || '' : '';
             document.getElementById('bookingSource').value = editData ? editData.source || 'Direct' : 'Direct';
             document.getElementById('totalAmount').value = editData ? editData.total : '';
@@ -2489,14 +2513,20 @@
             }
             const total = parseInt(document.getElementById('totalAmount').value) || 0;
             const advance = parseInt(document.getElementById('advance').value) || 0;
+            if (total <= 0) return alert('Total amount must be greater than 0');
+            if (advance < 0) return alert('Amount received cannot be negative');
+            if (advance > total) return alert('Amount received cannot be greater than total amount');
             
             const rooms = getEffectiveSelectedModalRooms();
             if(rooms.length === 0) return alert('Select at least one room');
 
+            const editingId = state.editingId;
+            let previousBooking = editingId ? findBookingById(editingId) || state.viewBooking : null;
             if (isCloudConfigured()) await syncFromCloud();
-            if(checkConflict(rooms, state.editingId)) return alert("⚠️ Room Conflict!");
-            const bookingId = state.editingId || Date.now().toString();
-            const previousLockPaths = state.editingId ? getExistingBookingLockPaths(state.editingId) : [];
+            if (editingId) previousBooking = findBookingById(editingId) || previousBooking;
+            if(checkConflict(rooms, editingId)) return alert("⚠️ Room Conflict!");
+            const bookingId = editingId || Date.now().toString();
+            const previousLockPaths = editingId ? getExistingBookingLockPaths(editingId) : [];
             let lockResult;
             try {
                 lockResult = await acquireBookingLocks(rooms, state.selection, bookingId);
@@ -2506,9 +2536,9 @@
             }
             if (!lockResult.ok) return alert('⚠️ This room/date was just taken on another device. Please sync and choose another date or room.');
 
-            if (state.editingId) {
+            if (editingId) {
                 Object.keys(state.bookings).forEach(d => {
-                    state.bookings[d] = state.bookings[d].filter(b => String(b.id) !== String(state.editingId));
+                    state.bookings[d] = state.bookings[d].filter(b => String(b.id) !== String(editingId));
                     if(state.bookings[d].length === 0) delete state.bookings[d];
                 });
             }
@@ -2524,8 +2554,8 @@
                 notes: document.getElementById('bookingNotes').value,
                 source: document.getElementById('bookingSource').value,
                 updatedAt: new Date().toISOString(),
-                paymentHistory: state.editingId
-                    ? syncBookingPaymentHistory(state.viewBooking, advance)
+                paymentHistory: editingId
+                    ? syncBookingPaymentHistory(previousBooking, advance)
                     : (advance > 0 ? [{
                         id: `pay_${Date.now()}`,
                         date: getLocalYMD(new Date()),
@@ -2580,6 +2610,7 @@
             const exDate = document.getElementById('exDate').value || getDefaultTxnDateForFinanceRange();
             const category = document.getElementById('exCategory').value || 'uncategorized';
             if(!desc || !amt) return;
+            if ((parseFloat(amt) || 0) <= 0) return alert('Expense amount must be greater than 0');
             const expense = { id: Date.now().toString(), date: exDate, desc, amount: amt, category, updatedAt: new Date().toISOString() };
             state.expenses.push(expense);
             persistExpenseToCloud(expense);
@@ -2595,6 +2626,7 @@
             const date = document.getElementById('editExDate').value || getDefaultTxnDateForFinanceRange();
             const category = document.getElementById('editExCategory').value || 'uncategorized';
             if (!desc || !amount) return alert('Description and amount are required');
+            if ((parseFloat(amount) || 0) <= 0) return alert('Expense amount must be greater than 0');
             if (!confirm('Save changes to this expense?')) return;
             const expense = { id: state.editingExpenseId, date, desc, amount, category, updatedAt: new Date().toISOString() };
             state.expenses = state.expenses.map(item => String(item.id) === String(state.editingExpenseId) ? expense : item);
@@ -2720,6 +2752,7 @@
             const mealDate = document.getElementById('mealDate').value || getDefaultTxnDateForFinanceRange();
             const source = document.getElementById('mealSource').value || 'meals';
             if(!desc || !amt) return;
+            if ((parseFloat(amt) || 0) <= 0) return alert('Income amount must be greater than 0');
             const meal = { id: Date.now().toString(), date: mealDate, desc, amount: amt, source, updatedAt: new Date().toISOString() };
             state.meals.push(meal);
             persistMealToCloud(meal);
@@ -2735,6 +2768,7 @@
             const date = document.getElementById('editMealDate').value || getDefaultTxnDateForFinanceRange();
             const source = document.getElementById('editMealSource').value || 'meals';
             if (!desc || !amount) return alert('Description and amount are required');
+            if ((parseFloat(amount) || 0) <= 0) return alert('Income amount must be greater than 0');
             if (!confirm('Save changes to this income entry?')) return;
             const meal = { id: state.editingMealId, date, desc, amount, source, updatedAt: new Date().toISOString() };
             state.meals = state.meals.map(item => String(item.id) === String(state.editingMealId) ? meal : item);
@@ -3094,7 +3128,10 @@
                 });
             const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'})); a.download = `lb_report_${getLocalYMD(new Date())}.csv`; a.click();
         }
-        function triggerImport() { document.getElementById('fileInput').click(); }
+        function triggerImport() {
+            if (!requireCloudLogin('restore a backup')) return;
+            document.getElementById('fileInput').click();
+        }
         function importData(input) {
             if (!requireCloudLogin('restore a backup')) {
                 if (input) input.value = '';
@@ -3105,7 +3142,7 @@
             r.onload = (e) => {
                 try {
                     const d = JSON.parse(e.target.result);
-                    state.bookings = d.bookings || d;
+                    state.bookings = normalizeBookingsByDate(d.bookings || d);
                     state.expenses = normalizeTxnEntries(d.expenses || [], 'expense');
                     state.meals = normalizeTxnEntries(d.income || d.meals || [], 'meal');
                     syncIncomeAlias();
