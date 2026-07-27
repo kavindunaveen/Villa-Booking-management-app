@@ -284,7 +284,9 @@
         .input-field {
             width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 12px;
             background: var(--bg); font-size: 1rem; color: var(--text-main); font-family: inherit;
+            min-width: 0; box-sizing: border-box;
         }
+        input[type="date"].input-field { appearance: auto; -webkit-appearance: none; max-width: 100%; }
         .input-field:focus { outline: 2px solid var(--primary); background: var(--card); }
         
         .btn {
@@ -307,7 +309,8 @@
         .txn-add-panel.collapsed .txn-add-body { display: none; }
         .txn-add-panel.collapsed .txn-add-toggle i { transform: rotate(-90deg); }
         .form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-        .form-grid.two { grid-template-columns: 1fr 0.8fr; }
+        .form-grid.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: end; }
+        .txn-amount-date-grid { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); }
         .txn-list { display: grid; gap: 10px; padding-right: 2px; }
         .txn-card {
             background: var(--bg); border: 1px solid var(--border); border-radius: 14px;
@@ -339,10 +342,11 @@
             border-radius: 12px; padding: 10px 12px; font-size: 0.82rem; font-weight: 700;
         }
         .txn-filter-tabs { display: flex; gap: 8px; overflow-x: auto; margin: 0 0 12px 0; padding-bottom: 2px; }
+        .txn-filter-tabs::-webkit-scrollbar { display: none; }
         .txn-filter-tab {
             border: 1px solid var(--border); background: var(--bg); color: var(--text-light);
             border-radius: 999px; padding: 8px 12px; font-size: 0.82rem; font-weight: 800;
-            white-space: nowrap; cursor: pointer;
+            white-space: nowrap; cursor: pointer; flex: 0 0 auto; max-width: 160px;
         }
         .txn-filter-total { display: block; font-size: 0.68rem; font-weight: 700; opacity: 0.78; margin-top: 2px; }
         .txn-filter-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
@@ -351,7 +355,15 @@
             padding: 10px 12px; font-size: 0.85rem; font-weight: 700; margin-bottom: 12px;
         }
         @media (max-width: 420px) {
-            .form-grid.two { grid-template-columns: 1fr; }
+            .sheet { padding-left: 18px; padding-right: 18px; }
+            .txn-add-body { padding: 0 12px 12px; }
+            .form-grid.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+            .txn-amount-date-grid { grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr); }
+            .input-field { padding: 12px 10px; font-size: 0.95rem; }
+            input[type="date"].input-field { font-size: 0.9rem; letter-spacing: -0.2px; }
+            .txn-filter-tabs { margin-left: -2px; margin-right: -2px; padding: 0 2px 4px; }
+            .txn-filter-tab { padding: 8px 10px; font-size: 0.76rem; max-width: 138px; }
+            .txn-filter-total { font-size: 0.64rem; }
         }
 
         .room-chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -675,7 +687,7 @@
                             <label class="input-label">Description</label>
                             <input type="text" id="exDesc" class="input-field" placeholder="e.g. Electricity bill">
                         </div>
-                        <div class="form-grid two">
+                        <div class="form-grid two txn-amount-date-grid">
                             <div class="input-group">
                                 <label class="input-label">Amount</label>
                                 <input type="number" id="exAmount" class="input-field" placeholder="0">
@@ -726,7 +738,7 @@
                             <label class="input-label">Description</label>
                             <input type="text" id="mealDesc" class="input-field" placeholder="e.g. Breakfast, salary">
                         </div>
-                        <div class="form-grid two">
+                        <div class="form-grid two txn-amount-date-grid">
                             <div class="input-group">
                                 <label class="input-label">Amount</label>
                                 <input type="number" id="mealAmount" class="input-field" placeholder="0">
@@ -768,7 +780,7 @@
                     <label class="input-label">Title</label>
                     <input type="text" id="editExDesc" class="input-field">
                 </div>
-                <div class="form-grid two">
+                <div class="form-grid two txn-amount-date-grid">
                     <div class="input-group">
                         <label class="input-label">Amount</label>
                         <input type="number" id="editExAmount" class="input-field">
@@ -806,7 +818,7 @@
                     <label class="input-label">Title</label>
                     <input type="text" id="editMealDesc" class="input-field">
                 </div>
-                <div class="form-grid two">
+                <div class="form-grid two txn-amount-date-grid">
                     <div class="input-group">
                         <label class="input-label">Amount</label>
                         <input type="number" id="editMealAmount" class="input-field">
