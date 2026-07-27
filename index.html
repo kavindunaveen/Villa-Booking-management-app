@@ -181,6 +181,15 @@
         .status-paid { color: var(--success); }
         .status-due { color: var(--danger); }
         .btn-pay-now { background: var(--success); color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer; margin-left: 5px; }
+        .booking-choice-row { padding: 14px 0; border-bottom: 1px solid var(--border); }
+        .booking-choice-main { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+        .booking-choice-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+        .booking-choice-actions button {
+            border: 1px solid var(--border); background: var(--card); color: var(--text-main);
+            border-radius: 10px; padding: 9px 6px; font-weight: 700; cursor: pointer;
+        }
+        .booking-choice-actions .pay { background: #E8F5E9; color: var(--success); border-color: #C8E6C9; }
+        .booking-choice-actions .edit { background: #E3F2FD; color: var(--primary); border-color: #BBDEFB; }
 
         .stat-card {
             background: var(--card); padding: 20px; border-radius: 16px; margin-bottom: 15px; text-align: center;
@@ -640,6 +649,7 @@
             <div id="detailsContent" style="margin-bottom:25px; font-size:1rem; color:var(--text-main);"></div>
             <div id="actionButtons">
                 <button class="btn btn-primary" onclick="editBooking()">Edit / Update Payment</button>
+                <button class="btn btn-primary" id="btnSettleAction" style="background:var(--success); display:none;">Settle Balance</button>
                 <button class="btn btn-outline" onclick="changeBookingRooms()"><i class="fas fa-exchange-alt"></i> Change Room(s) / Setup</button>
                 <button class="btn btn-whatsapp" id="btnWhatsapp"><i class="fab fa-whatsapp"></i> Share Receipt</button>
                 <button class="btn btn-danger" onclick="deleteBooking()"><i class="fas fa-trash"></i> Delete Booking</button>
@@ -1820,12 +1830,16 @@
             ROOMS.forEach(r => {
                 let isBooked = false; let guestName = ''; let paymentStatus = ''; let bal = 0;
                 let statusClass = 'paid'; // default
+                let bookingToOpen = null;
+                let bookingsToOpen = [];
 
                 if (r.id === 'Full Villa') {
                    if (state.bookings[today] && state.bookings[today].length > 0) {
                        isBooked = true;
+                       bookingsToOpen = state.bookings[today].filter(b => b && b.id != null);
                        const villaBooking = state.bookings[today].find(b => getBookingRooms(b).some(rm => rm.type === 'Full Villa'));
                        if (villaBooking) {
+                           bookingToOpen = villaBooking;
                            guestName = villaBooking.name;
                            bal = getBookingBalance(villaBooking);
                            paymentStatus = bal <= 0 ? 'PAID' : `DUE: ${bal}`;
@@ -1846,6 +1860,7 @@
                         });
                         if (booking) { 
                              isBooked = true; 
+                             bookingToOpen = booking;
                              // If blocked by Villa booking
                              if (getBookingRooms(booking).some(rm => rm.type === 'Full Villa')) {
                                  guestName = "Villa Guest";
@@ -1866,6 +1881,21 @@
                     ? `<div class="status-badge ${statusClass}"><span>Booked</span><span style="font-size:0.6rem; margin-top:2px;">${paymentStatus}</span></div>` 
                     : `<button class="quick-book-btn" onclick="quickBook('${r.id}')"><i class="fas fa-plus"></i></button>`;
                 div.innerHTML = `<div class="room-info" onclick="goToCalendar('${escapeAttr(r.id)}')" style="cursor:pointer; flex:1;"><h3>${escapeHtml(r.name)}</h3><p>${isBooked ? 'Occupied by ' + escapeHtml(guestName) : 'Available Today'}</p></div><div class="card-actions">${actionsHtml}</div>`;
+                const roomInfo = div.querySelector('.room-info');
+                if (roomInfo && isBooked) {
+                    roomInfo.onclick = () => {
+                        if (bookingToOpen) openDetails(bookingToOpen);
+                        else openBookingChoiceList(bookingsToOpen, `${today} bookings`);
+                    };
+                }
+                const statusBadge = div.querySelector('.status-badge');
+                if (statusBadge && isBooked) {
+                    statusBadge.style.cursor = 'pointer';
+                    statusBadge.onclick = () => {
+                        if (bookingToOpen) openDetails(bookingToOpen);
+                        else openBookingChoiceList(bookingsToOpen, `${today} bookings`);
+                    };
+                }
                 container.appendChild(div);
             });
         }
@@ -2100,6 +2130,68 @@
         }
 
         // --- BOOKING LOGIC ---
+        function openBookingChoiceList(bookings, title = 'Booking Details') {
+            const detailsContent = document.getElementById('detailsContent');
+            const actionButtons = document.getElementById('actionButtons');
+            detailsContent.innerHTML = '';
+            state.viewId = null;
+            state.viewBooking = null;
+            if (actionButtons) actionButtons.style.display = 'none';
+
+            const heading = document.createElement('div');
+            heading.style.cssText = 'font-weight:700; color:var(--text-light); margin-bottom:8px;';
+            heading.innerText = title;
+            detailsContent.appendChild(heading);
+
+            (bookings || []).filter(b => b && b.id != null).forEach(b => {
+                const row = document.createElement('div');
+                row.className = 'booking-choice-row';
+
+                const main = document.createElement('div');
+                main.className = 'booking-choice-main';
+                const bal = getBookingBalance(b);
+                const balanceHtml = bal > 0
+                    ? `<div style="font-size:0.78rem; color:var(--danger); margin-top:3px;">Due Rs ${escapeHtml(bal)}</div>`
+                    : '<div style="font-size:0.78rem; color:var(--success); margin-top:3px;">Paid</div>';
+                main.innerHTML = `<div style="min-width:0;"><b>${escapeHtml(b.name || b.guestPhone || 'Unknown guest')}</b>${balanceHtml}</div><span style="font-size:0.85rem; color:gray; text-align:right;">${escapeHtml(getBookingRoomSummary(b))}</span>`;
+                main.onclick = () => openDetails(b);
+                row.appendChild(main);
+
+                const actions = document.createElement('div');
+                actions.className = 'booking-choice-actions';
+
+                const viewBtn = document.createElement('button');
+                viewBtn.type = 'button';
+                viewBtn.innerText = 'View';
+                viewBtn.onclick = () => openDetails(b);
+                actions.appendChild(viewBtn);
+
+                const editBtn = document.createElement('button');
+                editBtn.type = 'button';
+                editBtn.className = 'edit';
+                editBtn.innerText = 'Edit';
+                editBtn.onclick = () => {
+                    openDetails(b);
+                    editBooking();
+                };
+                actions.appendChild(editBtn);
+
+                const payBtn = document.createElement('button');
+                payBtn.type = 'button';
+                payBtn.className = 'pay';
+                payBtn.innerText = bal > 0 ? 'Pay Now' : 'Paid';
+                payBtn.disabled = bal <= 0;
+                payBtn.style.opacity = bal > 0 ? '1' : '0.55';
+                payBtn.onclick = () => settleBill(b.id);
+                actions.appendChild(payBtn);
+
+                row.appendChild(actions);
+                detailsContent.appendChild(row);
+            });
+
+            openModal('detailsModal');
+        }
+
         function handleDateTap(date, skipRoomPicker = false) {
             if (state.filterRoom === 'All' && !skipRoomPicker) {
                 const existing = (state.bookings[date] || []).filter(b => b && b.id != null);
@@ -2128,19 +2220,7 @@
                 if (relevant.length === 1) {
                     openDetails(relevant[0]);
                 } else {
-                    const detailsContent = document.getElementById('detailsContent');
-                    detailsContent.innerHTML = '';
-                    relevant.forEach(b => {
-                        const row = document.createElement('div');
-                        row.style.cssText = 'padding:14px 0; border-bottom:1px solid var(--border); cursor:pointer; display:flex; justify-content:space-between; gap:12px; align-items:center;';
-                        const bal = getBookingBalance(b);
-                        const balanceHtml = bal > 0 ? `<div style="font-size:0.75rem; color:var(--danger); margin-top:3px;">Due Rs ${escapeHtml(bal)}</div>` : '<div style="font-size:0.75rem; color:var(--success); margin-top:3px;">Paid</div>';
-                        row.innerHTML = `<div style="min-width:0;"><b>${escapeHtml(b.name || b.guestPhone || 'Unknown guest')}</b>${balanceHtml}</div><span style="font-size:0.85rem; color:gray; text-align:right;">${escapeHtml(getBookingRoomSummary(b))}</span>`;
-                        row.onclick = () => openDetails(b);
-                        detailsContent.appendChild(row);
-                    });
-                    document.getElementById('actionButtons').style.display = 'none';
-                    openModal('detailsModal');
+                    openBookingChoiceList(relevant, `${date} bookings`);
                 }
                 return;
             }
@@ -2697,8 +2777,8 @@
                 const category = e.category || 'uncategorized';
                 const categoryLabel = category === 'villa' ? 'Villa' : category === 'home' ? 'Home' : 'Uncategorized';
                 const quickCategoryActions = category === 'uncategorized'
-                    ? `<button class="txn-action-btn" onclick="quickSetExpenseCategory(${jsArg(e.id)}, 'villa')">Mark Villa</button>
-                        <button class="txn-action-btn" onclick="quickSetExpenseCategory(${jsArg(e.id)}, 'home')">Mark Home</button>`
+                    ? `<button class="txn-action-btn" onclick='quickSetExpenseCategory(${jsArg(e.id)}, "villa")'>Mark Villa</button>
+                        <button class="txn-action-btn" onclick='quickSetExpenseCategory(${jsArg(e.id)}, "home")'>Mark Home</button>`
                     : '';
                 list.innerHTML += `<div class="txn-card">
                     <div class="txn-card-main">
@@ -2710,8 +2790,8 @@
                         <div class="txn-amount expense">-Rs ${escapeHtml(e.amount)}</div>
                     </div>
                     <div class="txn-actions">
-                        <button class="txn-action-btn" onclick="editExpense(${jsArg(e.id)})"><i class="fas fa-pen"></i> Edit</button>
-                        <button class="txn-action-btn danger" onclick="deleteExpense(${jsArg(e.id)})"><i class="fas fa-trash"></i> Delete</button>
+                        <button class="txn-action-btn" onclick='editExpense(${jsArg(e.id)})'><i class="fas fa-pen"></i> Edit</button>
+                        <button class="txn-action-btn danger" onclick='deleteExpense(${jsArg(e.id)})'><i class="fas fa-trash"></i> Delete</button>
                     </div>
                     ${quickCategoryActions ? `<div class="txn-actions">${quickCategoryActions}</div>` : ''}
                 </div>`;
@@ -2831,8 +2911,8 @@
                         <div class="txn-amount income">+Rs ${escapeHtml(e.amount)}</div>
                     </div>
                     <div class="txn-actions">
-                        <button class="txn-action-btn" onclick="editMeal(${jsArg(e.id)})"><i class="fas fa-pen"></i> Edit</button>
-                        <button class="txn-action-btn danger" onclick="deleteMeal(${jsArg(e.id)})"><i class="fas fa-trash"></i> Delete</button>
+                        <button class="txn-action-btn" onclick='editMeal(${jsArg(e.id)})'><i class="fas fa-pen"></i> Edit</button>
+                        <button class="txn-action-btn danger" onclick='deleteMeal(${jsArg(e.id)})'><i class="fas fa-trash"></i> Delete</button>
                     </div>
                 </div>`;
             });
@@ -2893,12 +2973,17 @@
             const checkOut = range.length ? addDaysToYMD(range[range.length - 1], 1) : '-';
             const collected = getBookingCollectedTotal(b);
             const bal = getBookingBalance(b);
-            const settleBtn = bal > 0 ? `<button onclick="settleBill(${jsArg(b.id)})" style="background:var(--success); color:white; border:none; padding:5px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.85rem; margin-left:10px;">Settle Now</button>` : '';
+            const settleBtn = bal > 0 ? `<button onclick='settleBill(${jsArg(b.id)})' style="background:var(--success); color:white; border:none; padding:5px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.85rem; margin-left:10px;">Settle Now</button>` : '';
             dDiv.innerHTML = `<div style="background:var(--bg); padding:15px; border-radius:12px;"><div style="font-size:1.2rem; font-weight:700;">${escapeHtml(b.name || b.guestPhone || 'Unknown guest')}</div><div style="color:var(--text-light); margin-top:5px;">${escapeHtml(getBookingRoomSummary(b, true))}</div>${b.guestPhone ? `<div style="font-size:0.85rem; margin-top:5px; color:var(--text-light);">📞 ${escapeHtml(b.guestPhone)}</div>` : ''}${b.source ? `<div style="font-size:0.8rem; margin-top:5px; color:var(--primary); font-weight:600;">Via ${escapeHtml(b.source)}</div>` : ''}</div>${b.notes ? `<div style="background:#FFF3E0; color:#E65100; padding:10px; margin-top:10px; border-radius:8px; font-size:0.9rem;">📝 ${escapeHtml(b.notes)}</div>` : ''}<div style="margin-top:15px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-in</span> <b>${escapeHtml(checkIn)} (2 PM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-out</span> <b>${escapeHtml(checkOut)} (11 AM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; font-size:1.1rem; font-weight:700; align-items:center;"><span>Balance</span> <div style="display:flex; align-items:center;"><span style="color:${bal > 0 ? 'var(--danger)':'var(--success)'}">Rs ${escapeHtml(bal)}</span>${settleBtn}</div></div><div style="margin-top:5px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Total Bill</span> <span>Rs ${escapeHtml(b.total)}</span></div><div style="margin-top:0px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Amount Received</span> <span>Rs ${escapeHtml(collected)}</span></div>`;
             openModal('detailsModal');
             document.getElementById('btnWhatsapp').onclick = () => {
                 window.open(`https://wa.me/?text=${encodeURIComponent(buildWhatsAppBookingText(b))}`);
             };
+            const settleAction = document.getElementById('btnSettleAction');
+            if (settleAction) {
+                settleAction.style.display = bal > 0 ? 'block' : 'none';
+                settleAction.onclick = () => settleBill(b.id);
+            }
         }
 
         function formatRoomLineForShare(room) {
@@ -3202,9 +3287,17 @@
                 const bal = getBookingBalance(b);
                 const statusClass = bal <= 0 ? 'status-paid' : 'status-due';
                 const statusText = bal <= 0 ? '(Paid)' : `(Due: Rs ${bal})`;
-                const payBtn = bal > 0 ? `<button class="btn-pay-now" onclick="event.stopPropagation(); settleBill(${jsArg(b.id)})">Pay Now</button>` : '';
+                const payBtn = bal > 0 ? '<button class="btn-pay-now" type="button">Pay Now</button>' : '';
                 div.innerHTML = `<div class="agenda-date">${escapeHtml(checkIn)} <span style="color:#999; font-weight:400; font-size:0.8rem; margin-left:5px;">(${escapeHtml(b.guests || '-')} Guests)</span></div><div class="agenda-name">${escapeHtml(b.name || b.guestPhone || 'Unknown guest')}</div><div class="agenda-room">${escapeHtml(getBookingRoomSummary(b))}</div><div class="agenda-price">Rs ${escapeHtml(b.total || 0)}<br><span class="agenda-status ${statusClass}">${escapeHtml(statusText)} ${payBtn}</span></div>`;
-                div.onclick = () => openDetails(b); list.appendChild(div);
+                div.onclick = () => openDetails(b);
+                const payButton = div.querySelector('.btn-pay-now');
+                if (payButton) {
+                    payButton.onclick = (event) => {
+                        event.stopPropagation();
+                        settleBill(b.id);
+                    };
+                }
+                list.appendChild(div);
             });
         }
         function toggleHistory() { setAgendaMode(!state.showHistory); }
