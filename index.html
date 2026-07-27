@@ -1731,6 +1731,7 @@
         
         document.addEventListener('DOMContentLoaded', () => {
             if(localStorage.getItem('theme') === 'dark') document.body.setAttribute('data-theme', 'dark');
+            document.addEventListener('click', handleDelegatedButtonClick);
             
             try {
                 initApp();
@@ -1745,6 +1746,39 @@
                 setTimeout(() => loader.style.display = 'none', 300);
             }
         });
+
+        function handleDelegatedButtonClick(event) {
+            const expenseButton = event.target.closest('[data-expense-action]');
+            if (expenseButton) {
+                event.preventDefault();
+                event.stopPropagation();
+                const id = expenseButton.getAttribute('data-expense-id');
+                const action = expenseButton.getAttribute('data-expense-action');
+                if (action === 'edit') editExpense(id);
+                if (action === 'delete') deleteExpense(id);
+                if (action === 'mark-villa') quickSetExpenseCategory(id, 'villa');
+                if (action === 'mark-home') quickSetExpenseCategory(id, 'home');
+                return;
+            }
+
+            const incomeButton = event.target.closest('[data-income-action]');
+            if (incomeButton) {
+                event.preventDefault();
+                event.stopPropagation();
+                const id = incomeButton.getAttribute('data-income-id');
+                const action = incomeButton.getAttribute('data-income-action');
+                if (action === 'edit') editMeal(id);
+                if (action === 'delete') deleteMeal(id);
+                return;
+            }
+
+            const settleButton = event.target.closest('[data-settle-booking-id]');
+            if (settleButton) {
+                event.preventDefault();
+                event.stopPropagation();
+                settleBill(settleButton.getAttribute('data-settle-booking-id'));
+            }
+        }
 
         function initApp() {
             state.bookings = normalizeBookingsByDate(state.bookings);
@@ -2183,7 +2217,7 @@
                 payBtn.innerText = bal > 0 ? 'Pay Now' : 'Paid';
                 payBtn.disabled = bal <= 0;
                 payBtn.style.opacity = bal > 0 ? '1' : '0.55';
-                payBtn.onclick = () => settleBill(b.id);
+                payBtn.setAttribute('data-settle-booking-id', String(b.id));
                 actions.appendChild(payBtn);
 
                 row.appendChild(actions);
@@ -2797,16 +2831,6 @@
                     ${quickCategoryActions ? `<div class="txn-actions">${quickCategoryActions}</div>` : ''}
                 </div>`;
             });
-            list.querySelectorAll('[data-expense-action]').forEach(button => {
-                button.onclick = () => {
-                    const id = button.getAttribute('data-expense-id');
-                    const action = button.getAttribute('data-expense-action');
-                    if (action === 'edit') editExpense(id);
-                    if (action === 'delete') deleteExpense(id);
-                    if (action === 'mark-villa') quickSetExpenseCategory(id, 'villa');
-                    if (action === 'mark-home') quickSetExpenseCategory(id, 'home');
-                };
-            });
         }
         function deleteExpense(id) { if(!requireCloudLogin('delete an expense')) return; if(!confirm("Delete?")) return; state.expenses = state.expenses.filter(e => String(e.id) !== String(id)); if(String(state.editingExpenseId) === String(id)) clearExpenseEditForm(); deleteExpenseFromCloud(id); renderExpensesList(); renderMenu(); }
         function deleteEditingExpense() {
@@ -2927,14 +2951,6 @@
                     </div>
                 </div>`;
             });
-            list.querySelectorAll('[data-income-action]').forEach(button => {
-                button.onclick = () => {
-                    const id = button.getAttribute('data-income-id');
-                    const action = button.getAttribute('data-income-action');
-                    if (action === 'edit') editMeal(id);
-                    if (action === 'delete') deleteMeal(id);
-                };
-            });
         }
         function deleteMeal(id) { if(!requireCloudLogin('delete income')) return; if(!confirm("Delete?")) return; state.meals = state.meals.filter(m => String(m.id) !== String(id)); syncIncomeAlias(); if(String(state.editingMealId) === String(id)) clearMealEditForm(); deleteMealFromCloud(id); renderMealsList(); renderMenu(); }
         function deleteEditingMeal() {
@@ -2992,18 +3008,16 @@
             const checkOut = range.length ? addDaysToYMD(range[range.length - 1], 1) : '-';
             const collected = getBookingCollectedTotal(b);
             const bal = getBookingBalance(b);
-            const settleBtn = bal > 0 ? '<button id="inlineSettleBtn" type="button" style="background:var(--success); color:white; border:none; padding:5px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.85rem; margin-left:10px;">Settle Now</button>' : '';
+            const settleBtn = bal > 0 ? `<button id="inlineSettleBtn" type="button" data-settle-booking-id="${escapeAttr(b.id)}" style="background:var(--success); color:white; border:none; padding:5px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.85rem; margin-left:10px;">Settle Now</button>` : '';
             dDiv.innerHTML = `<div style="background:var(--bg); padding:15px; border-radius:12px;"><div style="font-size:1.2rem; font-weight:700;">${escapeHtml(b.name || b.guestPhone || 'Unknown guest')}</div><div style="color:var(--text-light); margin-top:5px;">${escapeHtml(getBookingRoomSummary(b, true))}</div>${b.guestPhone ? `<div style="font-size:0.85rem; margin-top:5px; color:var(--text-light);">📞 ${escapeHtml(b.guestPhone)}</div>` : ''}${b.source ? `<div style="font-size:0.8rem; margin-top:5px; color:var(--primary); font-weight:600;">Via ${escapeHtml(b.source)}</div>` : ''}</div>${b.notes ? `<div style="background:#FFF3E0; color:#E65100; padding:10px; margin-top:10px; border-radius:8px; font-size:0.9rem;">📝 ${escapeHtml(b.notes)}</div>` : ''}<div style="margin-top:15px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-in</span> <b>${escapeHtml(checkIn)} (2 PM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-out</span> <b>${escapeHtml(checkOut)} (11 AM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; font-size:1.1rem; font-weight:700; align-items:center;"><span>Balance</span> <div style="display:flex; align-items:center;"><span style="color:${bal > 0 ? 'var(--danger)':'var(--success)'}">Rs ${escapeHtml(bal)}</span>${settleBtn}</div></div><div style="margin-top:5px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Total Bill</span> <span>Rs ${escapeHtml(b.total)}</span></div><div style="margin-top:0px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Amount Received</span> <span>Rs ${escapeHtml(collected)}</span></div>`;
             openModal('detailsModal');
-            const inlineSettleBtn = document.getElementById('inlineSettleBtn');
-            if (inlineSettleBtn) inlineSettleBtn.onclick = () => settleBill(b.id);
             document.getElementById('btnWhatsapp').onclick = () => {
                 window.open(`https://wa.me/?text=${encodeURIComponent(buildWhatsAppBookingText(b))}`);
             };
             const settleAction = document.getElementById('btnSettleAction');
             if (settleAction) {
                 settleAction.style.display = bal > 0 ? 'block' : 'none';
-                settleAction.onclick = () => settleBill(b.id);
+                settleAction.setAttribute('data-settle-booking-id', String(b.id));
             }
         }
 
@@ -3308,16 +3322,9 @@
                 const bal = getBookingBalance(b);
                 const statusClass = bal <= 0 ? 'status-paid' : 'status-due';
                 const statusText = bal <= 0 ? '(Paid)' : `(Due: Rs ${bal})`;
-                const payBtn = bal > 0 ? '<button class="btn-pay-now" type="button">Pay Now</button>' : '';
+                const payBtn = bal > 0 ? `<button class="btn-pay-now" type="button" data-settle-booking-id="${escapeAttr(b.id)}">Pay Now</button>` : '';
                 div.innerHTML = `<div class="agenda-date">${escapeHtml(checkIn)} <span style="color:#999; font-weight:400; font-size:0.8rem; margin-left:5px;">(${escapeHtml(b.guests || '-')} Guests)</span></div><div class="agenda-name">${escapeHtml(b.name || b.guestPhone || 'Unknown guest')}</div><div class="agenda-room">${escapeHtml(getBookingRoomSummary(b))}</div><div class="agenda-price">Rs ${escapeHtml(b.total || 0)}<br><span class="agenda-status ${statusClass}">${escapeHtml(statusText)} ${payBtn}</span></div>`;
                 div.onclick = () => openDetails(b);
-                const payButton = div.querySelector('.btn-pay-now');
-                if (payButton) {
-                    payButton.onclick = (event) => {
-                        event.stopPropagation();
-                        settleBill(b.id);
-                    };
-                }
                 list.appendChild(div);
             });
         }
