@@ -994,6 +994,8 @@
         const CLOUD_DATABASE_URL = 'https://lake-breeze-villa-default-rtdb.asia-southeast1.firebasedatabase.app';
         const CLOUD_SYNC_ID = 'lake-breeze-villa';
         const CLOUD_PENDING_KEY = 'hotelCloudPendingOps_v1';
+        const DELETED_BOOKINGS_KEY = 'hotelDeletedBookings_v1';
+        const DELETE_TOMBSTONE_MS = 7 * 24 * 60 * 60 * 1000;
         const CLOUD_POLL_MS = 30000;
         const FIREBASE_WEB_API_KEY = 'AIzaSyCG0oA_fwBa8WRQcSPSVr2ehVTn_n3Vulo';
         const AUTH_SESSION_KEY = 'hotelCloudAuthSession_v1';
@@ -1322,6 +1324,38 @@
             try { return JSON.parse(localStorage.getItem(CLOUD_PENDING_KEY)) || []; }
             catch (e) { return []; }
         }
+        function getDeletedBookingTombstones() {
+            try {
+                const now = Date.now();
+                const items = JSON.parse(localStorage.getItem(DELETED_BOOKINGS_KEY)) || {};
+                const fresh = {};
+                Object.keys(items).forEach(id => {
+                    if (now - (parseInt(items[id], 10) || 0) < DELETE_TOMBSTONE_MS) fresh[id] = items[id];
+                });
+                localStorage.setItem(DELETED_BOOKINGS_KEY, JSON.stringify(fresh));
+                return fresh;
+            } catch (e) {
+                return {};
+            }
+        }
+        function markBookingDeleted(id) {
+            if (id == null || id === '') return;
+            const tombstones = getDeletedBookingTombstones();
+            tombstones[String(id)] = Date.now();
+            localStorage.setItem(DELETED_BOOKINGS_KEY, JSON.stringify(tombstones));
+        }
+        function isBookingRecentlyDeleted(id) {
+            return Object.prototype.hasOwnProperty.call(getDeletedBookingTombstones(), String(id));
+        }
+        function filterDeletedBookingRecords(records) {
+            const result = {};
+            Object.values(records || {}).forEach(booking => {
+                if (booking && booking.id != null && !isBookingRecentlyDeleted(booking.id)) {
+                    result[String(booking.id)] = booking;
+                }
+            });
+            return result;
+        }
         function queueCloudOperation(method, path, data = null) {
             if (!isCloudConfigured()) return;
             if (!isCloudAuthReady()) {
@@ -1333,6 +1367,7 @@
             localStorage.setItem(CLOUD_PENDING_KEY, JSON.stringify(pending));
             setCloudSyncStatus('syncing', `${pending.length} change${pending.length === 1 ? '' : 's'} waiting`);
             flushCloudQueue();
+            if (state.cloudSyncBusy) setTimeout(flushCloudQueue, 500);
         }
         async function flushCloudQueue() {
             if (!isCloudConfigured() || state.cloudSyncBusy) return;
@@ -1363,6 +1398,7 @@
                 setCloudSyncStatus('error', error.message === 'Firebase permission denied' ? 'Firebase rules block access' : 'Offline - changes waiting to sync');
             } finally {
                 state.cloudSyncBusy = false;
+                if (getCloudPendingOperations().length) setTimeout(flushCloudQueue, 0);
             }
         }
         function getUniqueBookingsMap() {
@@ -1524,7 +1560,10 @@
                     if (showMessage) setCloudSyncStatus('syncing', 'Uploading this device data...');
                     return;
                 }
-                state.bookings = buildBookingsByDate(cloud.bookings);
+                const cloudBookingRecords = Object.values(cloud.bookings || {}).some(Array.isArray)
+                    ? collectUniqueBookingsFromDateMap(cloud.bookings)
+                    : cloud.bookings;
+                state.bookings = buildBookingsByDate(filterDeletedBookingRecords(cloudBookingRecords));
                 state.expenses = normalizeTxnEntries(recordMapToArray(cloud.expenses), 'expense');
                 state.meals = normalizeTxnEntries(recordMapToArray(cloud.income || cloud.meals), 'meal');
                 state.priceSettings = normalizePriceSettings(Array.isArray(cloud.priceSettings) ? cloud.priceSettings : recordMapToArray(cloud.priceSettings));
@@ -3358,6 +3397,7 @@
             const id = String(state.viewId || '');
             let deletedId = id;
             let found = false;
+            markBookingDeleted(id);
             queueDeleteBookingLocks(id);
             Object.keys(state.bookings).forEach(date => {
                 const before = Array.isArray(state.bookings[date]) ? state.bookings[date].length : 0;
