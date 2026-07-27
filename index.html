@@ -1081,6 +1081,11 @@
         function isDateInRange(dateStr, range) {
             return /^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || '')) && dateStr >= range.startYmd && dateStr < range.endYmd;
         }
+        function countBookingNightsInRange(booking, range) {
+            return (Array.isArray(booking && booking.range) ? booking.range : [])
+                .filter(date => isDateInRange(date, range))
+                .length;
+        }
         function setFinancePeriod(period) {
             state.financePeriod = period;
             renderMenu();
@@ -1754,6 +1759,9 @@
         function getBookingBalance(booking) {
             return (parseFloat((booking && booking.total) || 0) || 0) - getBookingCollectedTotal(booking);
         }
+        function getBookingOutstandingBalance(booking) {
+            return Math.max(0, getBookingBalance(booking));
+        }
         function getBookingCollectedForMonth(booking, monthKey) {
             const paymentHistory = getBookingPaymentHistory(booking);
             if (paymentHistory.length > 0) {
@@ -1947,7 +1955,7 @@
             results.forEach(b => {
                 const div = document.createElement('div'); div.className = 'agenda-item';
                 div.style.borderLeftColor = getBookingSetupColor(b);
-                const bal = getBookingBalance(b);
+                const bal = getBookingOutstandingBalance(b);
                 const statusClass = bal <= 0 ? 'status-paid' : 'status-due';
                 const statusText = bal <= 0 ? '(Paid)' : `(Due: Rs ${bal})`;
                 const checkIn = Array.isArray(b.range) && b.range[0] ? b.range[0] : '-';
@@ -2285,7 +2293,7 @@
 
                 const main = document.createElement('div');
                 main.className = 'booking-choice-main';
-                const bal = getBookingBalance(b);
+                const bal = getBookingOutstandingBalance(b);
                 const balanceHtml = bal > 0
                     ? `<div style="font-size:0.78rem; color:var(--danger); margin-top:3px;">Due Rs ${escapeHtml(bal)}</div>`
                     : '<div style="font-size:0.78rem; color:var(--success); margin-top:3px;">Paid</div>';
@@ -3181,7 +3189,7 @@
             const checkIn = range[0] || '-';
             const checkOut = range.length ? addDaysToYMD(range[range.length - 1], 1) : '-';
             const collected = getBookingCollectedTotal(b);
-            const bal = getBookingBalance(b);
+            const bal = getBookingOutstandingBalance(b);
             const settleBtn = bal > 0 ? `<button id="inlineSettleBtn" type="button" data-settle-booking-id="${escapeAttr(b.id)}" style="background:var(--success); color:white; border:none; padding:5px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.85rem; margin-left:10px;">Settle Now</button>` : '';
             dDiv.innerHTML = `<div style="background:var(--bg); padding:15px; border-radius:12px;"><div style="font-size:1.2rem; font-weight:700;">${escapeHtml(b.name || b.guestPhone || 'Unknown guest')}</div><div style="color:var(--text-light); margin-top:5px;">${escapeHtml(getBookingRoomSummary(b, true))}</div>${b.guestPhone ? `<div style="font-size:0.85rem; margin-top:5px; color:var(--text-light);">📞 ${escapeHtml(b.guestPhone)}</div>` : ''}${b.source ? `<div style="font-size:0.8rem; margin-top:5px; color:var(--primary); font-weight:600;">Via ${escapeHtml(b.source)}</div>` : ''}</div>${b.notes ? `<div style="background:#FFF3E0; color:#E65100; padding:10px; margin-top:10px; border-radius:8px; font-size:0.9rem;">📝 ${escapeHtml(b.notes)}</div>` : ''}<div style="margin-top:15px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-in</span> <b>${escapeHtml(checkIn)} (2 PM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-out</span> <b>${escapeHtml(checkOut)} (11 AM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; font-size:1.1rem; font-weight:700; align-items:center;"><span>Balance</span> <div style="display:flex; align-items:center;"><span style="color:${bal > 0 ? 'var(--danger)':'var(--success)'}">Rs ${escapeHtml(bal)}</span>${settleBtn}</div></div><div style="margin-top:5px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Total Bill</span> <span>Rs ${escapeHtml(b.total)}</span></div><div style="margin-top:0px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Amount Received</span> <span>Rs ${escapeHtml(collected)}</span></div>`;
             openModal('detailsModal');
@@ -3202,7 +3210,7 @@
 
         function buildWhatsAppBookingText(b) {
             const advance = getBookingCollectedTotal(b);
-            const balance = getBookingBalance(b);
+            const balance = getBookingOutstandingBalance(b);
             const roomLines = getBookingRooms(b).map(formatRoomLineForShare).join('\n') || '-';
             const guestPhone = (b.guestPhone || '').trim() || 'Not provided';
             const guestCount = b.guests ? `Guests: ${b.guests}` : '';
@@ -3383,7 +3391,7 @@
                 const range = Array.isArray(b.range) ? b.range : [];
                 const checkOut = range.length ? addDaysToYMD(range[range.length - 1], 1) : '';
                 const collected = getBookingCollectedTotal(b);
-                const balance = (parseFloat(b.total) || 0) - collected;
+                const balance = getBookingOutstandingBalance(b);
                 csv += csvRow([b.id, b.name || b.guestPhone || '', b.guestPhone || '', range[0] || '', checkOut, getBookingRoomSummary(b, true), b.guests || '', b.total || 0, collected, balance, b.source || 'Direct', b.notes || '']);
             });
             csv += '\n';
@@ -3504,7 +3512,7 @@
                 if (headerText !== lastHeader) { list.innerHTML += `<div class="agenda-header">${headerText}</div>`; lastHeader = headerText; }
                 const div = document.createElement('div'); div.className = 'agenda-item';
                 div.style.borderLeftColor = getBookingSetupColor(b);
-                const bal = getBookingBalance(b);
+                const bal = getBookingOutstandingBalance(b);
                 const statusClass = bal <= 0 ? 'status-paid' : 'status-due';
                 const statusText = bal <= 0 ? '(Paid)' : `(Due: Rs ${bal})`;
                 const payBtn = bal > 0 ? `<button class="btn-pay-now" type="button" data-settle-booking-id="${escapeAttr(b.id)}">Pay Now</button>` : '';
@@ -3530,15 +3538,16 @@
 
                 // Cash received is counted by payment date, so advances for future bookings show in the period received.
                 bookingIncomeReceived += getBookingCollectedForRange(b, range);
+                bookedNights += countBookingNightsInRange(b, range);
 
                 // Booking count, sales value, and remaining balances use check-in date for the selected period.
                 if(isDateInRange(b.range[0], range)) {
                     bookingCount += 1;
-                    bookedNights += Array.isArray(b.range) ? b.range.length : 0;
                     bookingValue += parseFloat(b.total || 0);
                     const collected = getBookingCollectedTotal(b);
-                    selectedBookingCollected += collected;
-                    const balance = Math.max(0, (parseFloat(b.total || 0) - collected));
+                    const total = parseFloat(b.total || 0) || 0;
+                    selectedBookingCollected += Math.min(collected, total);
+                    const balance = getBookingOutstandingBalance(b);
                     outstanding += balance;
                     const checkout = Array.isArray(b.range) && b.range.length > 0
                         ? addDaysToYMD(b.range[b.range.length - 1], 1)
@@ -3563,7 +3572,7 @@
                 else mealIncome += amount;
             });
             
-            const collectionRate = bookingValue > 0 ? Math.round((selectedBookingCollected / bookingValue) * 100) : 0;
+            const collectionRate = bookingValue > 0 ? Math.min(100, Math.round((selectedBookingCollected / bookingValue) * 100)) : 0;
             const totalBusinessIncome = bookingIncomeReceived + mealIncome + otherIncome;
             const totalExpenses = villaExpense + homeExpense + uncategorizedExpense;
             const villaProfit = totalBusinessIncome - villaExpense;
