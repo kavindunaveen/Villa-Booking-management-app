@@ -407,6 +407,7 @@
     <div class="header">
         <div class="app-title">Lake Breeze Villa</div>
         <div class="header-actions">
+            <div class="header-icon" onclick="openSearch()" title="Search Bookings"><i class="fas fa-search"></i></div>
             <div id="syncStatus" class="sync-status" onclick="syncFromCloud(true)" title="Cloud Sync"><i class="fas fa-cloud"></i></div>
             <div class="header-icon" onclick="toggleTheme()"><i class="fas fa-moon"></i></div>
         </div>
@@ -2777,8 +2778,8 @@
                 const category = e.category || 'uncategorized';
                 const categoryLabel = category === 'villa' ? 'Villa' : category === 'home' ? 'Home' : 'Uncategorized';
                 const quickCategoryActions = category === 'uncategorized'
-                    ? `<button class="txn-action-btn" onclick='quickSetExpenseCategory(${jsArg(e.id)}, "villa")'>Mark Villa</button>
-                        <button class="txn-action-btn" onclick='quickSetExpenseCategory(${jsArg(e.id)}, "home")'>Mark Home</button>`
+                    ? `<button class="txn-action-btn" data-expense-action="mark-villa" data-expense-id="${escapeAttr(e.id)}">Mark Villa</button>
+                        <button class="txn-action-btn" data-expense-action="mark-home" data-expense-id="${escapeAttr(e.id)}">Mark Home</button>`
                     : '';
                 list.innerHTML += `<div class="txn-card">
                     <div class="txn-card-main">
@@ -2790,11 +2791,21 @@
                         <div class="txn-amount expense">-Rs ${escapeHtml(e.amount)}</div>
                     </div>
                     <div class="txn-actions">
-                        <button class="txn-action-btn" onclick='editExpense(${jsArg(e.id)})'><i class="fas fa-pen"></i> Edit</button>
-                        <button class="txn-action-btn danger" onclick='deleteExpense(${jsArg(e.id)})'><i class="fas fa-trash"></i> Delete</button>
+                        <button class="txn-action-btn" data-expense-action="edit" data-expense-id="${escapeAttr(e.id)}"><i class="fas fa-pen"></i> Edit</button>
+                        <button class="txn-action-btn danger" data-expense-action="delete" data-expense-id="${escapeAttr(e.id)}"><i class="fas fa-trash"></i> Delete</button>
                     </div>
                     ${quickCategoryActions ? `<div class="txn-actions">${quickCategoryActions}</div>` : ''}
                 </div>`;
+            });
+            list.querySelectorAll('[data-expense-action]').forEach(button => {
+                button.onclick = () => {
+                    const id = button.getAttribute('data-expense-id');
+                    const action = button.getAttribute('data-expense-action');
+                    if (action === 'edit') editExpense(id);
+                    if (action === 'delete') deleteExpense(id);
+                    if (action === 'mark-villa') quickSetExpenseCategory(id, 'villa');
+                    if (action === 'mark-home') quickSetExpenseCategory(id, 'home');
+                };
             });
         }
         function deleteExpense(id) { if(!requireCloudLogin('delete an expense')) return; if(!confirm("Delete?")) return; state.expenses = state.expenses.filter(e => String(e.id) !== String(id)); if(String(state.editingExpenseId) === String(id)) clearExpenseEditForm(); deleteExpenseFromCloud(id); renderExpensesList(); renderMenu(); }
@@ -2911,10 +2922,18 @@
                         <div class="txn-amount income">+Rs ${escapeHtml(e.amount)}</div>
                     </div>
                     <div class="txn-actions">
-                        <button class="txn-action-btn" onclick='editMeal(${jsArg(e.id)})'><i class="fas fa-pen"></i> Edit</button>
-                        <button class="txn-action-btn danger" onclick='deleteMeal(${jsArg(e.id)})'><i class="fas fa-trash"></i> Delete</button>
+                        <button class="txn-action-btn" data-income-action="edit" data-income-id="${escapeAttr(e.id)}"><i class="fas fa-pen"></i> Edit</button>
+                        <button class="txn-action-btn danger" data-income-action="delete" data-income-id="${escapeAttr(e.id)}"><i class="fas fa-trash"></i> Delete</button>
                     </div>
                 </div>`;
+            });
+            list.querySelectorAll('[data-income-action]').forEach(button => {
+                button.onclick = () => {
+                    const id = button.getAttribute('data-income-id');
+                    const action = button.getAttribute('data-income-action');
+                    if (action === 'edit') editMeal(id);
+                    if (action === 'delete') deleteMeal(id);
+                };
             });
         }
         function deleteMeal(id) { if(!requireCloudLogin('delete income')) return; if(!confirm("Delete?")) return; state.meals = state.meals.filter(m => String(m.id) !== String(id)); syncIncomeAlias(); if(String(state.editingMealId) === String(id)) clearMealEditForm(); deleteMealFromCloud(id); renderMealsList(); renderMenu(); }
@@ -2973,9 +2992,11 @@
             const checkOut = range.length ? addDaysToYMD(range[range.length - 1], 1) : '-';
             const collected = getBookingCollectedTotal(b);
             const bal = getBookingBalance(b);
-            const settleBtn = bal > 0 ? `<button onclick='settleBill(${jsArg(b.id)})' style="background:var(--success); color:white; border:none; padding:5px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.85rem; margin-left:10px;">Settle Now</button>` : '';
+            const settleBtn = bal > 0 ? '<button id="inlineSettleBtn" type="button" style="background:var(--success); color:white; border:none; padding:5px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.85rem; margin-left:10px;">Settle Now</button>' : '';
             dDiv.innerHTML = `<div style="background:var(--bg); padding:15px; border-radius:12px;"><div style="font-size:1.2rem; font-weight:700;">${escapeHtml(b.name || b.guestPhone || 'Unknown guest')}</div><div style="color:var(--text-light); margin-top:5px;">${escapeHtml(getBookingRoomSummary(b, true))}</div>${b.guestPhone ? `<div style="font-size:0.85rem; margin-top:5px; color:var(--text-light);">📞 ${escapeHtml(b.guestPhone)}</div>` : ''}${b.source ? `<div style="font-size:0.8rem; margin-top:5px; color:var(--primary); font-weight:600;">Via ${escapeHtml(b.source)}</div>` : ''}</div>${b.notes ? `<div style="background:#FFF3E0; color:#E65100; padding:10px; margin-top:10px; border-radius:8px; font-size:0.9rem;">📝 ${escapeHtml(b.notes)}</div>` : ''}<div style="margin-top:15px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-in</span> <b>${escapeHtml(checkIn)} (2 PM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-out</span> <b>${escapeHtml(checkOut)} (11 AM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; font-size:1.1rem; font-weight:700; align-items:center;"><span>Balance</span> <div style="display:flex; align-items:center;"><span style="color:${bal > 0 ? 'var(--danger)':'var(--success)'}">Rs ${escapeHtml(bal)}</span>${settleBtn}</div></div><div style="margin-top:5px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Total Bill</span> <span>Rs ${escapeHtml(b.total)}</span></div><div style="margin-top:0px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Amount Received</span> <span>Rs ${escapeHtml(collected)}</span></div>`;
             openModal('detailsModal');
+            const inlineSettleBtn = document.getElementById('inlineSettleBtn');
+            if (inlineSettleBtn) inlineSettleBtn.onclick = () => settleBill(b.id);
             document.getElementById('btnWhatsapp').onclick = () => {
                 window.open(`https://wa.me/?text=${encodeURIComponent(buildWhatsAppBookingText(b))}`);
             };
