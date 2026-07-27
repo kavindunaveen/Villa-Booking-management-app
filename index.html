@@ -529,6 +529,10 @@
                     <span><i class="fas fa-receipt"></i> Expenses</span>
                     <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i>
                 </div>
+                <div class="menu-row" onclick="openModal('priceSettingsModal')">
+                    <span><i class="fas fa-tags"></i> Room Prices</span>
+                    <i class="fas fa-chevron-right" style="font-size:0.8rem; color:var(--text-light)"></i>
+                </div>
                 <div class="menu-row" onclick="syncFromCloud(true)">
                     <span><i class="fas fa-cloud"></i> Cloud Sync</span>
                     <span id="menuSyncStatus" style="font-size:0.8rem; color:var(--text-light);">Connecting...</span>
@@ -871,6 +875,47 @@
         </div>
     </div>
 
+    <!-- PRICE SETTINGS MODAL -->
+    <div class="modal-overlay" id="priceSettingsModal">
+        <div class="sheet edit-txn-sheet">
+            <h3 style="margin-top:0;">Room Price Settings</h3>
+            <div class="auth-note" style="margin-bottom:12px;">
+                New prices apply from the effective date onward. Existing bookings keep their saved total.
+            </div>
+            <div class="form-card edit-form-card">
+                <div class="input-group">
+                    <label class="input-label">Effective From</label>
+                    <input type="date" id="priceEffectiveFrom" class="input-field" onchange="refreshPriceSettingsModal(true)">
+                </div>
+                <div class="form-grid two txn-amount-date-grid">
+                    <div class="input-group">
+                        <label class="input-label">Double Room</label>
+                        <input type="number" id="priceDouble" class="input-field" placeholder="0">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Triple Room</label>
+                        <input type="number" id="priceTriple" class="input-field" placeholder="0">
+                    </div>
+                </div>
+                <div class="form-grid two txn-amount-date-grid">
+                    <div class="input-group">
+                        <label class="input-label">Family Room</label>
+                        <input type="number" id="priceFamily" class="input-field" placeholder="0">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Full Villa</label>
+                        <input type="number" id="priceVilla" class="input-field" placeholder="0">
+                    </div>
+                </div>
+            </div>
+            <div id="priceHistoryList" class="txn-list" style="margin-bottom:12px;"></div>
+            <div class="edit-actions">
+                <button class="btn btn-primary btn-compact" onclick="savePriceSettings()">Apply New Prices</button>
+                <button class="btn btn-outline btn-compact" onclick="closeModal('priceSettingsModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const ROOMS = [
             { id: 'Double Room', name: 'Double', price: 6000, color: '#1565C0', bg: '#E3F2FD', short:'Dbl' },
@@ -918,6 +963,7 @@
             bookings: readLocalJson('hotelBookings_v7', {}),
             expenses: readLocalJson('hotelExpenses_v1', []),
             meals: readLocalJson('hotelIncome_v1', null) || readLocalJson('hotelMeals_v1', []),
+            priceSettings: readLocalJson('hotelPriceSettings_v1', []),
             income: [],
             activeTab: 'home',
             financePeriod: 'month',
@@ -1390,12 +1436,14 @@
         function saveLocalData() {
             localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings));
             localStorage.setItem('hotelExpenses_v1', JSON.stringify(state.expenses));
+            localStorage.setItem('hotelPriceSettings_v1', JSON.stringify(state.priceSettings));
             persistIncomeLocalData();
         }
         function refreshDataViews() {
             renderCalendar(); renderHome(); renderAgenda(); renderMenu();
             if (document.getElementById('expensesModal')?.classList.contains('open')) renderExpensesList();
             if (document.getElementById('mealsModal')?.classList.contains('open')) renderMealsList();
+            if (document.getElementById('priceSettingsModal')?.classList.contains('open')) refreshPriceSettingsModal();
         }
         function persistBookingToCloud(booking) {
             localStorage.setItem('hotelBookings_v7', JSON.stringify(state.bookings));
@@ -1425,6 +1473,11 @@
             queueCloudOperation('DELETE', `income/${encodeURIComponent(String(id))}`);
             queueCloudOperation('DELETE', `meals/${encodeURIComponent(String(id))}`);
         }
+        function persistPriceSettingsToCloud() {
+            state.priceSettings = normalizePriceSettings(state.priceSettings);
+            localStorage.setItem('hotelPriceSettings_v1', JSON.stringify(state.priceSettings));
+            queueCloudOperation('PUT', 'priceSettings', state.priceSettings);
+        }
         function replaceCloudWithLocalData() {
             if (!isCloudConfigured()) return;
             queueCloudOperation('PUT', 'bookings', getUniqueBookingsMap());
@@ -1432,6 +1485,7 @@
             queueCloudOperation('PUT', 'expenses', arrayToRecordMap(state.expenses));
             queueCloudOperation('PUT', 'income', arrayToRecordMap(state.meals));
             queueCloudOperation('PUT', 'meals', arrayToRecordMap(state.meals));
+            queueCloudOperation('PUT', 'priceSettings', state.priceSettings);
         }
         function uploadThisDeviceToCloud() {
             if (!isCloudConfigured()) return alert('Cloud sync is not configured.');
@@ -1455,7 +1509,7 @@
                 const response = await fetch(getCloudEndpoint());
                 if (!response.ok) throw new Error(response.status === 401 ? 'Firebase permission denied' : `Cloud request failed (${response.status})`);
                 const cloud = await response.json();
-                if (!cloud || (!cloud.bookings && !cloud.expenses && !cloud.income && !cloud.meals)) {
+                if (!cloud || (!cloud.bookings && !cloud.expenses && !cloud.income && !cloud.meals && !cloud.priceSettings)) {
                     if (!hasLocalBusinessData()) {
                         setCloudSyncStatus('connected', 'Cloud empty - no local data to upload');
                         return;
@@ -1468,6 +1522,7 @@
                 state.bookings = buildBookingsByDate(cloud.bookings);
                 state.expenses = normalizeTxnEntries(recordMapToArray(cloud.expenses), 'expense');
                 state.meals = normalizeTxnEntries(recordMapToArray(cloud.income || cloud.meals), 'meal');
+                state.priceSettings = normalizePriceSettings(Array.isArray(cloud.priceSettings) ? cloud.priceSettings : recordMapToArray(cloud.priceSettings));
                 syncIncomeAlias();
                 saveLocalData();
                 refreshDataViews();
@@ -1516,14 +1571,28 @@
             return dateStr >= baselineYmd;
         }
         function getRateCardForDate(dateStr) {
-            if (isDateOnOrAfter(dateStr, LATEST_PRICE_CHANGE_DATE)) return CURRENT_ROOM_RATES;
-            if (isDateOnOrAfter(dateStr, PRICE_CHANGE_DATE)) return UPDATED_ROOM_RATES;
-            return LEGACY_ROOM_RATES;
+            const baseRates = isDateOnOrAfter(dateStr, LATEST_PRICE_CHANGE_DATE)
+                ? CURRENT_ROOM_RATES
+                : isDateOnOrAfter(dateStr, PRICE_CHANGE_DATE)
+                    ? UPDATED_ROOM_RATES
+                    : LEGACY_ROOM_RATES;
+            const custom = getPriceSettingsForDate(dateStr);
+            return custom ? { ...baseRates, ...custom.rates } : baseRates;
+        }
+        function getPriceSettingsForDate(dateStr) {
+            const validDate = /^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || '')) ? dateStr : getLocalYMD(new Date());
+            return state.priceSettings
+                .filter(entry => entry.effectiveFrom <= validDate)
+                .sort((a, b) => String(b.effectiveFrom).localeCompare(String(a.effectiveFrom)))[0] || null;
+        }
+        function hasCustomPriceForDate(roomType, dateStr) {
+            const custom = getPriceSettingsForDate(dateStr);
+            return !!custom && parseFloat(custom.rates?.[roomType]) > 0;
         }
         function getNightlyRoomRate(roomType, dateStr, nights) {
             const nightsCount = Math.max(1, parseInt(nights, 10) || 1);
-            if (roomType === 'Full Villa') return nightsCount >= 2 ? 24000 : 25000;
             const rateCard = getRateCardForDate(dateStr);
+            if (roomType === 'Full Villa' && !hasCustomPriceForDate('Full Villa', dateStr)) return nightsCount >= 2 ? 24000 : 25000;
             if (rateCard[roomType] != null) return rateCard[roomType];
             const fallback = ROOMS.find(r => r.id === roomType);
             return fallback ? fallback.price : 0;
@@ -1655,6 +1724,25 @@
         }
         function getBookingPaymentHistory(booking) {
             return normalizePaymentHistory(booking && booking.paymentHistory);
+        }
+        function normalizePriceSettings(entries) {
+            if (!Array.isArray(entries)) return [];
+            return entries
+                .filter(entry => entry && typeof entry.effectiveFrom === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(entry.effectiveFrom))
+                .map((entry, idx) => ({
+                    id: entry.id ? String(entry.id) : `price_${Date.now()}_${idx}`,
+                    effectiveFrom: entry.effectiveFrom,
+                    rates: {
+                        'Double Room': parseFloat(entry.rates?.['Double Room']) || 0,
+                        'Triple Room 1': parseFloat(entry.rates?.['Triple Room 1'] ?? entry.rates?.['Triple Room']) || 0,
+                        'Triple Room 2': parseFloat(entry.rates?.['Triple Room 2'] ?? entry.rates?.['Triple Room']) || 0,
+                        'Family Room': parseFloat(entry.rates?.['Family Room']) || 0,
+                        'Full Villa': parseFloat(entry.rates?.['Full Villa']) || 0
+                    },
+                    updatedAt: entry.updatedAt || ''
+                }))
+                .filter(entry => Object.values(entry.rates).every(amount => amount > 0))
+                .sort((a, b) => String(a.effectiveFrom).localeCompare(String(b.effectiveFrom)));
         }
         function getBookingCollectedTotal(booking) {
             const paymentHistory = getBookingPaymentHistory(booking);
@@ -1796,6 +1884,7 @@
             state.bookings = normalizeBookingsByDate(state.bookings);
             state.expenses = normalizeTxnEntries(state.expenses, 'expense');
             state.meals = normalizeTxnEntries(state.meals, 'meal');
+            state.priceSettings = normalizePriceSettings(state.priceSettings);
             syncIncomeAlias();
             saveLocalData();
             renderHome(); renderCalendar(); renderAgenda(); renderMenu();
@@ -2720,6 +2809,72 @@
             const panel = document.getElementById(kind === 'expense' ? 'expenseAddPanel' : 'incomeAddPanel');
             if (panel) panel.classList.toggle('collapsed');
         }
+        function refreshPriceSettingsModal(forceRateFill = false) {
+            const today = getLocalYMD(new Date());
+            const effectiveInput = document.getElementById('priceEffectiveFrom');
+            if (effectiveInput && !effectiveInput.value) effectiveInput.value = today;
+            const date = effectiveInput?.value || today;
+            const rates = getRateCardForDate(date);
+            const setValue = (id, value) => {
+                const el = document.getElementById(id);
+                if (el && (forceRateFill || !el.value)) el.value = value || '';
+            };
+            setValue('priceDouble', rates['Double Room']);
+            setValue('priceTriple', rates['Triple Room 1']);
+            setValue('priceFamily', rates['Family Room']);
+            setValue('priceVilla', rates['Full Villa']);
+
+            const list = document.getElementById('priceHistoryList');
+            if (!list) return;
+            const recent = state.priceSettings.slice().sort((a,b) => String(b.effectiveFrom).localeCompare(String(a.effectiveFrom))).slice(0, 5);
+            if (!recent.length) {
+                list.innerHTML = '<p style="text-align:center;color:#999; margin:8px 0;">No custom price changes yet</p>';
+                return;
+            }
+            list.innerHTML = recent.map(entry => `
+                <div class="txn-card">
+                    <div class="txn-card-main">
+                        <div>
+                            <div class="txn-title">From ${escapeHtml(entry.effectiveFrom)}</div>
+                            <div class="txn-meta">Double Rs ${escapeHtml(entry.rates['Double Room'])} · Triple Rs ${escapeHtml(entry.rates['Triple Room 1'])}</div>
+                            <div class="txn-meta">Family Rs ${escapeHtml(entry.rates['Family Room'])} · Villa Rs ${escapeHtml(entry.rates['Full Villa'])}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        function savePriceSettings() {
+            if (!requireCloudLogin('change room prices')) return;
+            const effectiveFrom = document.getElementById('priceEffectiveFrom').value || getLocalYMD(new Date());
+            const doubleRate = parseFloat(document.getElementById('priceDouble').value) || 0;
+            const tripleRate = parseFloat(document.getElementById('priceTriple').value) || 0;
+            const familyRate = parseFloat(document.getElementById('priceFamily').value) || 0;
+            const villaRate = parseFloat(document.getElementById('priceVilla').value) || 0;
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)) return alert('Select a valid effective date');
+            if ([doubleRate, tripleRate, familyRate, villaRate].some(rate => rate <= 0)) return alert('All room prices must be greater than 0');
+            if (!confirm(`Apply these new prices from ${effectiveFrom}? Existing bookings will keep their saved totals.`)) return;
+
+            const entry = {
+                id: `price_${Date.now()}`,
+                effectiveFrom,
+                rates: {
+                    'Double Room': doubleRate,
+                    'Triple Room 1': tripleRate,
+                    'Triple Room 2': tripleRate,
+                    'Family Room': familyRate,
+                    'Full Villa': villaRate
+                },
+                updatedAt: new Date().toISOString()
+            };
+            state.priceSettings = normalizePriceSettings([
+                ...state.priceSettings.filter(item => item.effectiveFrom !== effectiveFrom),
+                entry
+            ]);
+            persistPriceSettingsToCloud();
+            refreshPriceSettingsModal();
+            renderHome();
+            alert('Room prices updated.');
+        }
         function clearExpenseEditForm() { state.editingExpenseId = null; }
         function editExpense(id) {
             const expense = state.expenses.find(e => String(e.id) === String(id));
@@ -2996,6 +3151,7 @@
                 renderMealsList();
             }
             if(id==='authModal') refreshAuthModal();
+            if(id==='priceSettingsModal') refreshPriceSettingsModal();
         }
         function closeModal(id) {
             document.getElementById(id).classList.remove('open');
@@ -3005,6 +3161,12 @@
             if(id==='mealsModal') clearMealForm();
             if(id==='editExpenseModal') clearExpenseEditForm();
             if(id==='editMealModal') clearMealEditForm();
+            if(id==='priceSettingsModal') {
+                ['priceEffectiveFrom','priceDouble','priceTriple','priceFamily','priceVilla'].forEach(inputId => {
+                    const el = document.getElementById(inputId);
+                    if (el) el.value = '';
+                });
+            }
         }
         function toggleTheme() { const t = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.body.setAttribute('data-theme', t); localStorage.setItem('theme', t); }
         
@@ -3201,7 +3363,7 @@
                 renderCalendar(); renderHome(); renderAgenda(); renderMenu();
             }
         }
-        function exportData() { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({bookings: state.bookings, expenses: state.expenses, income: state.meals, meals: state.meals})); a.download = `lb_backup_${getLocalYMD(new Date())}.json`; a.click(); }
+        function exportData() { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({bookings: state.bookings, expenses: state.expenses, income: state.meals, meals: state.meals, priceSettings: state.priceSettings})); a.download = `lb_backup_${getLocalYMD(new Date())}.json`; a.click(); }
         function csvCell(value) {
             const text = String(value == null ? '' : value);
             return `"${text.replace(/"/g, '""')}"`;
@@ -3258,6 +3420,16 @@
                 .forEach(income => {
                     csv += csvRow([income.id, income.date, income.desc, income.amount, (income.source || 'meals') === 'other' ? 'Other Income' : 'Meal Income']);
                 });
+            csv += '\n';
+
+            csv += csvRow(['ROOM PRICE SETTINGS']);
+            csv += csvRow(['Effective From','Double Room','Triple Room 1','Triple Room 2','Family Room','Full Villa']);
+            state.priceSettings
+                .slice()
+                .sort((a,b) => String(b.effectiveFrom).localeCompare(String(a.effectiveFrom)))
+                .forEach(entry => {
+                    csv += csvRow([entry.effectiveFrom, entry.rates['Double Room'], entry.rates['Triple Room 1'], entry.rates['Triple Room 2'], entry.rates['Family Room'], entry.rates['Full Villa']]);
+                });
             const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'})); a.download = `lb_report_${getLocalYMD(new Date())}.csv`; a.click();
         }
         function triggerImport() {
@@ -3277,6 +3449,7 @@
                     state.bookings = normalizeBookingsByDate(d.bookings || d);
                     state.expenses = normalizeTxnEntries(d.expenses || [], 'expense');
                     state.meals = normalizeTxnEntries(d.income || d.meals || [], 'meal');
+                    state.priceSettings = normalizePriceSettings(d.priceSettings || []);
                     syncIncomeAlias();
                     saveLocalData();
                     replaceCloudWithLocalData();
