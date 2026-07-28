@@ -1121,7 +1121,7 @@
             return false;
         }
         function hasLocalBusinessData() {
-            return Object.keys(getUniqueBookingsMap()).length > 0 || state.expenses.length > 0 || state.meals.length > 0;
+            return Object.keys(getUniqueBookingsMap()).length > 0 || state.expenses.length > 0 || state.meals.length > 0 || state.priceSettings.length > 0;
         }
         function getCloudEndpoint(path = '') {
             const suffix = path ? `/${path}` : '';
@@ -1544,7 +1544,7 @@
         }
         function uploadThisDeviceToCloud() {
             if (!isCloudConfigured()) return alert('Cloud sync is not configured.');
-            if (!confirm('Replace the cloud bookings, expenses, and income with the data currently on this device?')) return;
+            if (!confirm('Replace the cloud bookings, expenses, income, and room prices with the data currently on this device?')) return;
             replaceCloudWithLocalData();
             setCloudSyncStatus('syncing', 'Uploading this device data...');
         }
@@ -3419,7 +3419,7 @@
             if (!requireCloudLogin('delete a booking')) return;
             if(!confirm("Delete?")) return;
             const id = String(state.viewId || '');
-            let deletedId = id;
+            if (!id) return alert('Could not find this booking ID. Please close and open the booking again.');
             let found = false;
             markBookingDeleted(id);
             queueDeleteBookingLocks(id);
@@ -3429,11 +3429,10 @@
                 if (state.bookings[date].length !== before) found = true;
                 if(state.bookings[date].length === 0) delete state.bookings[date];
             });
-            if(found) {
-                deleteBookingFromCloud(deletedId);
-                closeModal('detailsModal');
-                renderCalendar(); renderHome(); renderAgenda(); renderMenu();
-            }
+            deleteBookingFromCloud(id);
+            closeModal('detailsModal');
+            if(!found) syncFromCloud(true);
+            renderCalendar(); renderHome(); renderAgenda(); renderMenu();
         }
         function exportData() { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({bookings: state.bookings, expenses: state.expenses, income: state.meals, meals: state.meals, priceSettings: state.priceSettings})); a.download = `lb_backup_${getLocalYMD(new Date())}.json`; a.click(); }
         function csvCell(value) {
