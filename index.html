@@ -2157,10 +2157,16 @@
                 const info = ROOMS.find(r => r.id === room.type);
                 container.innerHTML += `<div class="room-use-row">
                     <div><div class="room-use-name">${escapeHtml(info ? info.name : room.type)}</div><div class="room-use-hint">Physical room remains reserved</div></div>
-                    <select class="input-field" data-room-id="${escapeAttr(room.type)}" onchange="${changeHandler}">
+                    <select class="input-field room-setup-select" data-change-handler="${escapeAttr(changeHandler)}" data-room-id="${escapeAttr(room.type)}">
                         ${options.map(option => `<option value="${escapeAttr(option)}" ${option === selectedSetup ? 'selected' : ''}>Use as ${escapeHtml(option)}</option>`).join('')}
                     </select>
                 </div>`;
+            });
+            container.querySelectorAll('.room-setup-select').forEach(select => {
+                select.onchange = () => {
+                    if (select.dataset.changeHandler === 'updateInquiryEstimate()') updateInquiryEstimate();
+                    else handleBookingRoomSetupChange();
+                };
             });
             wrapper.style.display = rooms.length ? 'block' : 'none';
         }
@@ -2799,15 +2805,18 @@
             if(rooms.length === 0) return alert('Select at least one room');
 
             const editingId = state.editingId;
+            const selectedRange = [...state.selection];
             let previousBooking = editingId ? findBookingById(editingId) || state.viewBooking : null;
             if (isCloudConfigured()) await syncFromCloud();
+            state.editingId = editingId;
+            state.selection = selectedRange;
             if (editingId) previousBooking = findBookingById(editingId) || previousBooking;
             if(checkConflict(rooms, editingId)) return alert("⚠️ Room Conflict!");
             const bookingId = editingId || Date.now().toString();
             const previousLockPaths = editingId ? getExistingBookingLockPaths(editingId) : [];
             let lockResult;
             try {
-                lockResult = await acquireBookingLocks(rooms, state.selection, bookingId);
+                lockResult = await acquireBookingLocks(rooms, selectedRange, bookingId);
             } catch (error) {
                 console.error('Booking lock failed:', error);
                 return alert('Could not confirm room availability with cloud sync. Please check internet connection and try again.');
@@ -2828,7 +2837,7 @@
                 guestPhone: guestPhone,
                 advance: advance,
                 total: total, 
-                range: [...state.selection], 
+                range: [...selectedRange],
                 notes: document.getElementById('bookingNotes').value,
                 source: document.getElementById('bookingSource').value,
                 updatedAt: new Date().toISOString(),
@@ -2842,7 +2851,7 @@
                     }] : [])
             };
 
-            state.selection.forEach(d => {
+            selectedRange.forEach(d => {
                 if(!state.bookings[d]) state.bookings[d] = [];
                 state.bookings[d].push(booking);
             });
