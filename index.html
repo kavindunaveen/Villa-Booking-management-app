@@ -1151,6 +1151,20 @@
             const getResponse = await fetch(getCloudEndpoint(path), { headers: { 'X-Firebase-ETag': 'true' } });
             if (!getResponse.ok) throw new Error(`Cloud lock check failed (${getResponse.status})`);
             const existing = await getResponse.json();
+            if (existing && isBookingRecentlyDeleted(existing.bookingId)) {
+                const deleteResponse = await fetch(getCloudEndpoint(path), { method: 'DELETE' });
+                if (!deleteResponse.ok) return { ok: false, existingSameBooking: false };
+                return putCloudIfAbsentOrSame(path, data, bookingId);
+            }
+            if (existing && existing.bookingId && String(existing.bookingId) !== String(bookingId)) {
+                const bookingResponse = await fetch(getCloudEndpoint(`bookings/${encodeURIComponent(String(existing.bookingId))}`));
+                const bookingExists = bookingResponse.ok && await bookingResponse.json();
+                if (!bookingExists) {
+                    const deleteResponse = await fetch(getCloudEndpoint(path), { method: 'DELETE' });
+                    if (!deleteResponse.ok) return { ok: false, existingSameBooking: false };
+                    return putCloudIfAbsentOrSame(path, data, bookingId);
+                }
+            }
             if (existing && String(existing.bookingId || '') !== String(bookingId)) return { ok: false, existingSameBooking: false };
             const existingSameBooking = !!existing && String(existing.bookingId || '') === String(bookingId);
             const etag = getResponse.headers.get('ETag');
@@ -1404,14 +1418,14 @@
         function getUniqueBookingsMap() {
             const result = {};
             Object.values(state.bookings).flat().forEach(booking => {
-                if (booking && booking.id != null) result[String(booking.id)] = booking;
+                if (booking && booking.id != null && !isBookingRecentlyDeleted(booking.id)) result[String(booking.id)] = booking;
             });
             return result;
         }
         function collectUniqueBookingsFromDateMap(bookingsByDate) {
             const result = {};
             Object.values(bookingsByDate || {}).flat().forEach(booking => {
-                if (booking && booking.id != null) result[String(booking.id)] = booking;
+                if (booking && booking.id != null && !isBookingRecentlyDeleted(booking.id)) result[String(booking.id)] = booking;
             });
             return result;
         }
@@ -1429,7 +1443,7 @@
         function buildBookingsByDate(records) {
             const result = {};
             Object.values(records || {}).forEach(booking => {
-                if (!booking || !booking.id || !Array.isArray(booking.range)) return;
+                if (!booking || !booking.id || isBookingRecentlyDeleted(booking.id) || !Array.isArray(booking.range)) return;
                 booking.range.forEach(date => {
                     if (!result[date]) result[date] = [];
                     result[date].push(booking);
@@ -2570,6 +2584,7 @@
             for (let d of ranges) {
                 if (state.bookings[d]) {
                     for (let b of state.bookings[d]) {
+                        if (b && b.id != null && isBookingRecentlyDeleted(b.id)) continue;
                         if (ignoreId && String(b.id) === String(ignoreId)) continue; 
                         const bookingRooms = getBookingRooms(b);
                         const villaTaken = bookingRooms.some(r => r.type === 'Full Villa');
