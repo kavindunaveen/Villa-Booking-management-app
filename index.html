@@ -1133,6 +1133,10 @@
             if (selected.some(room => room.type === 'Full Villa')) return ROOMS.map(room => room.id);
             return selected.map(room => room.type);
         }
+        function bookingOwnsLock(booking, date, roomId) {
+            if (!booking || !Array.isArray(booking.range) || !booking.range.includes(date)) return false;
+            return getBookingLockTargets(getBookingRooms(booking)).includes(roomId);
+        }
         function getBookingLockPath(date, roomId) {
             return `bookingLocks/${encodeURIComponent(String(date))}/${encodeURIComponent(String(roomId))}`;
         }
@@ -1158,8 +1162,8 @@
             }
             if (existing && existing.bookingId && String(existing.bookingId) !== String(bookingId)) {
                 const bookingResponse = await fetch(getCloudEndpoint(`bookings/${encodeURIComponent(String(existing.bookingId))}`));
-                const bookingExists = bookingResponse.ok && await bookingResponse.json();
-                if (!bookingExists) {
+                const existingBooking = bookingResponse.ok ? await bookingResponse.json() : null;
+                if (!bookingOwnsLock(existingBooking, data.date, data.roomId)) {
                     const deleteResponse = await fetch(getCloudEndpoint(path), { method: 'DELETE' });
                     if (!deleteResponse.ok) return { ok: false, existingSameBooking: false };
                     return putCloudIfAbsentOrSame(path, data, bookingId);
@@ -1205,6 +1209,26 @@
             if (!targetPaths.length) return;
             await ensureFreshAuthToken();
             await Promise.allSettled(targetPaths.map(path => fetch(getCloudEndpoint(path), { method: 'DELETE' })));
+        }
+        async function deleteCloudBookingLocksByBookingId(bookingId) {
+            if (!isCloudConfigured() || !isCloudAuthReady() || bookingId == null || bookingId === '') return;
+            try {
+                await ensureFreshAuthToken();
+                const response = await fetch(getCloudEndpoint('bookingLocks'));
+                if (!response.ok) return;
+                const locks = await response.json();
+                const paths = [];
+                Object.entries(locks || {}).forEach(([date, rooms]) => {
+                    Object.entries(rooms || {}).forEach(([roomId, lock]) => {
+                        if (String(lock && lock.bookingId) === String(bookingId)) {
+                            paths.push(getBookingLockPath(date, roomId));
+                        }
+                    });
+                });
+                await releaseBookingLocks(bookingId, paths);
+            } catch (error) {
+                console.error('Could not remove stale booking locks:', error);
+            }
         }
         function queueDeleteBookingLocks(bookingId) {
             getExistingBookingLockPaths(bookingId).forEach(path => queueCloudOperation('DELETE', path));
@@ -1662,6 +1686,28 @@
             if (roomType === 'Full Villa') return 'Full Villa';
             return roomType;
         }
+        function normalizeRoomType(roomType) {
+            const raw = String(roomType || '').trim();
+            const compact = raw.toLowerCase().replace(/\s+/g, ' ');
+            const direct = ROOMS.find(room => room.id === raw || room.name === raw);
+            if (direct) return direct.id;
+            if (compact === 'double' || compact === 'double room' || compact === 'dbl') return 'Double Room';
+            if (compact === 'triple 1' || compact === 'triple room 1' || compact === 'tr1') return 'Triple Room 1';
+            if (compact === 'triple 2' || compact === 'triple room 2' || compact === 'tr2') return 'Triple Room 2';
+            if (compact === 'family' || compact === 'family room' || compact === 'fam') return 'Family Room';
+            if (compact === 'villa' || compact === 'full villa' || compact === 'vil') return 'Full Villa';
+            return raw;
+        }
+        function normalizeBookingRoom(room) {
+            if (!room || !room.type) return null;
+            const type = normalizeRoomType(room.type);
+            return {
+                ...room,
+                type,
+                count: parseInt(room.count, 10) || 1,
+                soldAs: room.soldAs || getDefaultRoomSetup(type)
+            };
+        }
         function getRoomSetupOptions(roomType) {
             if (roomType === 'Double Room') return ['Double', 'Triple'];
             if (roomType === 'Triple Room 1' || roomType === 'Triple Room 2') return ['Triple', 'Double'];
@@ -1703,7 +1749,9 @@
             return { key: 'Villa', label: 'Vil', tagClass: 'tag-Villa' };
         }
         function getBookingRooms(booking) {
-            return Array.isArray(booking && booking.rooms) ? booking.rooms.filter(room => room && room.type) : [];
+            return Array.isArray(booking && booking.rooms)
+                ? booking.rooms.map(normalizeBookingRoom).filter(Boolean)
+                : [];
         }
         function getBookingRoomSummary(booking, includePhysical = false) {
             const rooms = getBookingRooms(booking);
@@ -3423,6 +3471,7 @@
             let found = false;
             markBookingDeleted(id);
             queueDeleteBookingLocks(id);
+            deleteCloudBookingLocksByBookingId(id);
             Object.keys(state.bookings).forEach(date => {
                 const before = Array.isArray(state.bookings[date]) ? state.bookings[date].length : 0;
                 state.bookings[date] = (state.bookings[date] || []).filter(booking => String(booking && booking.id) !== id);
