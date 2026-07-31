@@ -1161,26 +1161,32 @@
             const getResponse = await fetch(getCloudEndpoint(path), { headers: { 'X-Firebase-ETag': 'true' } });
             if (!getResponse.ok) throw new Error(`Cloud lock check failed (${getResponse.status})`);
             const existing = await getResponse.json();
-            if (existing && isBookingRecentlyDeleted(existing.bookingId)) {
-                const deleteResponse = await fetch(getCloudEndpoint(path), { method: 'DELETE' });
-                if (!deleteResponse.ok) return { ok: false, existingSameBooking: false };
-                return putCloudIfAbsentOrSame(path, data, bookingId);
-            }
-            if (existing && existing.bookingId && String(existing.bookingId) !== String(bookingId)) {
-                const bookingResponse = await fetch(getCloudEndpoint(`bookings/${encodeURIComponent(String(existing.bookingId))}`));
-                const existingBooking = bookingResponse.ok ? await bookingResponse.json() : null;
-                if (!bookingOwnsLock(existingBooking, data.date, data.roomId)) {
+            if (existing) {
+                let ownsLock = false;
+                if (typeof existing === 'object' && existing.bookingId) {
+                    if (String(existing.bookingId) === String(bookingId)) {
+                        ownsLock = true;
+                    } else if (!isBookingRecentlyDeleted(existing.bookingId)) {
+                        const bookingResponse = await fetch(getCloudEndpoint(`bookings/${encodeURIComponent(String(existing.bookingId))}`));
+                        const existingBooking = bookingResponse.ok ? await bookingResponse.json() : null;
+                        ownsLock = bookingOwnsLock(existingBooking, data.date, data.roomId);
+                    }
+                }
+                
+                if (!ownsLock) {
                     const deleteResponse = await fetch(getCloudEndpoint(path), { method: 'DELETE' });
                     if (!deleteResponse.ok) return { ok: false, existingSameBooking: false };
                     return putCloudIfAbsentOrSame(path, data, bookingId);
+                } else if (String(existing.bookingId) !== String(bookingId)) {
+                    return { ok: false, existingSameBooking: false };
                 }
             }
-            if (existing && String(existing.bookingId || '') !== String(bookingId)) return { ok: false, existingSameBooking: false };
-            const existingSameBooking = !!existing && String(existing.bookingId || '') === String(bookingId);
+
+            const existingSameBooking = !!existing && typeof existing === 'object' && String(existing.bookingId || '') === String(bookingId);
             const etag = getResponse.headers.get('ETag');
             const putResponse = await fetch(getCloudEndpoint(path), {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', ...(etag ? { 'if-match': etag } : {}) },
+                headers: { 'Content-Type': 'application/json', ...(etag && etag !== 'null' ? { 'if-match': etag } : {}) },
                 body: JSON.stringify(data)
             });
             return putResponse.ok ? { ok: true, existingSameBooking } : { ok: false, existingSameBooking: false };
@@ -1432,7 +1438,15 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: op.method === 'DELETE' ? undefined : JSON.stringify(op.data)
                     });
-                    if (!response.ok) throw new Error(response.status === 401 ? 'Firebase permission denied' : `Cloud request failed (${response.status})`);
+                    if (!response.ok) {
+                        if (response.status >= 400 && response.status < 500 && response.status !== 401 && response.status !== 429) {
+                            console.error('Dropping permanently failed cloud operation:', op, response.status);
+                            pending.shift();
+                            localStorage.setItem(CLOUD_PENDING_KEY, JSON.stringify(pending));
+                            continue;
+                        }
+                        throw new Error(response.status === 401 ? 'Firebase permission denied' : `Cloud request failed (${response.status})`);
+                    }
                     pending.shift();
                     localStorage.setItem(CLOUD_PENDING_KEY, JSON.stringify(pending));
                 }
