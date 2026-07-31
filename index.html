@@ -976,6 +976,7 @@
             filterRoom: 'All',
             selection: [],
             viewId: null,
+            viewBooking: null,   // BUG-07 fix: explicitly declare so it's always defined
             editingId: null,
             editingExpenseId: null,
             editingMealId: null,
@@ -1100,10 +1101,16 @@
             renderMealsList();
         }
         function changeFinanceRange(dir) {
-            if (!state.financeDate) state.financeDate = new Date(state.viewDate);
-            if (state.financePeriod === 'day') state.financeDate.setDate(state.financeDate.getDate() + dir);
-            else if (state.financePeriod === 'week') state.financeDate.setDate(state.financeDate.getDate() + (dir * 7));
-            else state.financeDate.setMonth(state.financeDate.getMonth() + dir);
+            // BUG-11 fix: create a new Date instead of mutating financeDate in-place.
+            // In-place mutation caused viewDate and financeDate to share side-effects.
+            const base = state.financeDate ? new Date(state.financeDate) : new Date(state.viewDate);
+            if (state.financePeriod === 'day') {
+                state.financeDate = new Date(base.getFullYear(), base.getMonth(), base.getDate() + dir);
+            } else if (state.financePeriod === 'week') {
+                state.financeDate = new Date(base.getFullYear(), base.getMonth(), base.getDate() + (dir * 7));
+            } else {
+                state.financeDate = new Date(base.getFullYear(), base.getMonth() + dir, 1);
+            }
             renderMenu();
             refreshTxnModalContext();
             renderExpensesList();
@@ -2295,7 +2302,11 @@
         }
 
         function changeMonth(dir) {
-            state.viewDate.setMonth(state.viewDate.getMonth() + dir);
+            // BUG-12 fix: construct a new Date rather than mutating viewDate in-place.
+            // setMonth() on the existing object mutates the shared reference which can
+            // silently shift financeDate and cause both to drift together unexpectedly.
+            const v = state.viewDate;
+            state.viewDate = new Date(v.getFullYear(), v.getMonth() + dir, 1);
             renderCalendar();
             renderMenu();
             refreshTxnModalContext();
