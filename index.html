@@ -99,6 +99,9 @@
         .room-info h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
         .room-info p { margin: 0; font-size: 0.9rem; color: var(--text-light); }
         
+        /* BUG-34 fix: added missing .card-actions class to properly align buttons in room cards */
+        .card-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+
         .status-badge {
             padding: 6px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
             background: #E8F5E9; color: var(--success); display: flex; flex-direction: column; align-items: center; line-height: 1.2; text-align: center;
@@ -404,6 +407,20 @@
             padding: 10px 12px; font-size: 0.85rem; font-weight: 700; line-height: 1.35;
         }
 
+        /* BUG-17 fix: app loader CSS — previously #app-loader and .loader-spinner had no styles */
+        #app-loader {
+            position: fixed; inset: 0; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+            background: linear-gradient(135deg, var(--bg) 0%, var(--card) 100%);
+        }
+        .loader-spinner {
+            width: 44px; height: 44px; border-radius: 50%;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         #fileInput { display: none; }
     </style>
 </head>
@@ -628,7 +645,7 @@
             <div id="roomPickerDateLabel" style="color:var(--text-light); font-weight:600; margin-bottom:14px;"></div>
             <div id="roomPickerList" class="room-picker-list"></div>
             <button class="btn btn-primary" onclick="continueSelectedRoomsFromRoomPicker()" style="margin-top:0;">Continue with Selected Room(s)</button>
-            <button class="btn btn-outline" onclick="openExistingBookingsFromRoomPicker()" style="margin-top:0;">View / Edit Existing Booking</button>
+            <button id="roomPickerViewExistingBtn" class="btn btn-outline" onclick="openExistingBookingsFromRoomPicker()" style="margin-top:0;">View / Edit Existing Booking</button>
             <button class="btn btn-outline" onclick="closeModal('roomPickerModal')">Close</button>
         </div>
     </div>
@@ -898,7 +915,7 @@
                         <input type="number" id="priceDouble" class="input-field" placeholder="0">
                     </div>
                     <div class="input-group">
-                        <label class="input-label">Triple Room</label>
+                        <label class="input-label">Triple Rooms (1 & 2)</label>
                         <input type="number" id="priceTriple" class="input-field" placeholder="0">
                     </div>
                 </div>
@@ -929,29 +946,6 @@
             { id: 'Family Room', name: 'Family', price: 7500, color: '#C62828', bg: '#FFEBEE', short:'Fam' },
             { id: 'Full Villa', name: 'Villa', price: 25000, color: '#2E7D32', bg: '#E8F5E9', short:'Vil' }
         ];
-        const PRICE_CHANGE_DATE = '2026-03-09';
-        const LATEST_PRICE_CHANGE_DATE = '2026-04-07';
-        const LEGACY_ROOM_RATES = {
-            'Double Room': 5500,
-            'Triple Room 1': 6000,
-            'Triple Room 2': 6000,
-            'Family Room': 6500,
-            'Full Villa': 25000
-        };
-        const UPDATED_ROOM_RATES = {
-            'Double Room': 6000,
-            'Triple Room 1': 7000,
-            'Triple Room 2': 7000,
-            'Family Room': 8500,
-            'Full Villa': 25000
-        };
-        const CURRENT_ROOM_RATES = {
-            'Double Room': 6000,
-            'Triple Room 1': 7000,
-            'Triple Room 2': 7000,
-            'Family Room': 7500,
-            'Full Villa': 25000
-        };
         const readLocalJson = (key, fallback) => {
             try {
                 const value = localStorage.getItem(key);
@@ -1660,18 +1654,21 @@
                 state.cloudReconnectTimer = setTimeout(() => initializeCloudRealtimeListener(), 5000);
             };
         }
-        function isDateOnOrAfter(dateStr, baselineYmd) {
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ''))) return false;
-            return dateStr >= baselineYmd;
-        }
         function getRateCardForDate(dateStr) {
-            const baseRates = isDateOnOrAfter(dateStr, LATEST_PRICE_CHANGE_DATE)
-                ? CURRENT_ROOM_RATES
-                : isDateOnOrAfter(dateStr, PRICE_CHANGE_DATE)
-                    ? UPDATED_ROOM_RATES
-                    : LEGACY_ROOM_RATES;
+            const baseRates = {};
+            ROOMS.forEach(r => baseRates[r.id] = r.price);
             const custom = getPriceSettingsForDate(dateStr);
-            return custom ? { ...baseRates, ...custom.rates } : baseRates;
+            if (!custom || !custom.rates) return baseRates;
+            
+            // BUG-26 fix: do not let 0 or empty rates override base prices
+            const effectiveRates = { ...baseRates };
+            Object.keys(custom.rates).forEach(roomType => {
+                const rate = parseFloat(custom.rates[roomType]);
+                if (rate > 0) {
+                    effectiveRates[roomType] = rate;
+                }
+            });
+            return effectiveRates;
         }
         function getPriceSettingsForDate(dateStr) {
             const validDate = /^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || '')) ? dateStr : getLocalYMD(new Date());
@@ -1966,6 +1963,13 @@
                 loader.style.opacity = '0';
                 setTimeout(() => loader.style.display = 'none', 300);
             }
+            
+            // BUG-31 fix: clean up SSE and intervals on unload to prevent memory leaks and hanging connections
+            window.addEventListener('beforeunload', () => {
+                if (state.cloudEventSource) state.cloudEventSource.close();
+                if (state.cloudSyncTimer) clearInterval(state.cloudSyncTimer);
+                if (state.cloudRefreshTimer) clearTimeout(state.cloudRefreshTimer);
+            });
         });
 
         function handleDelegatedButtonClick(event) {
@@ -2011,9 +2015,11 @@
             renderHome(); renderCalendar(); renderAgenda(); renderMenu();
             const chipCont = document.getElementById('roomFilterContainer');
             if(chipCont) {
-                chipCont.innerHTML = `<div class="cal-chip active" onclick="setFilter('All', this)">All</div>`;
+                // BUG-18 fix: add data-room-id attributes so chip activation can use
+                // reliable attribute matching instead of fragile innerText comparison
+                chipCont.innerHTML = `<div class="cal-chip active" data-room-id="All" onclick="setFilter('All', this)">All</div>`;
                 ROOMS.forEach(r => {
-                    chipCont.innerHTML += `<div class="cal-chip" onclick="setFilter('${r.id}', this)">${r.name}</div>`;
+                    chipCont.innerHTML += `<div class="cal-chip" data-room-id="${escapeAttr(r.id)}" onclick="setFilter('${escapeAttr(r.id)}', this)">${escapeHtml(r.name)}</div>`;
                 });
             }
             initializeCloudSync();
@@ -2135,10 +2141,17 @@
                 }
 
                 const div = document.createElement('div'); div.className = 'room-card'; div.style.borderLeftColor = r.color;
+                
+                // BUG-27 fix: use a more appropriate text when the Full Villa is blocked by individual rooms
+                let statusText = isBooked ? 'Occupied by ' + escapeHtml(guestName) : 'Available Today';
+                if (r.id === 'Full Villa' && guestName === 'Individual Rooms') {
+                    statusText = 'Blocked by Individual Rooms';
+                }
+
                 const actionsHtml = isBooked 
                     ? `<div class="status-badge ${statusClass}"><span>Booked</span><span style="font-size:0.6rem; margin-top:2px;">${paymentStatus}</span></div>` 
                     : `<button class="quick-book-btn" onclick="quickBook('${r.id}')"><i class="fas fa-plus"></i></button>`;
-                div.innerHTML = `<div class="room-info" onclick="goToCalendar('${escapeAttr(r.id)}')" style="cursor:pointer; flex:1;"><h3>${escapeHtml(r.name)}</h3><p>${isBooked ? 'Occupied by ' + escapeHtml(guestName) : 'Available Today'}</p></div><div class="card-actions">${actionsHtml}</div>`;
+                div.innerHTML = `<div class="room-info" onclick="goToCalendar('${escapeAttr(r.id)}')" style="cursor:pointer; flex:1;"><h3>${escapeHtml(r.name)}</h3><p>${statusText}</p></div><div class="card-actions">${actionsHtml}</div>`;
                 const roomInfo = div.querySelector('.room-info');
                 if (roomInfo && isBooked) {
                     roomInfo.onclick = () => {
@@ -2277,9 +2290,10 @@
 
         function goToCalendar(roomId) {
             state.filterRoom = roomId;
+            // BUG-18 fix: use data-room-id attribute for reliable chip matching
             document.querySelectorAll('.cal-chip').forEach(c => {
                 c.classList.remove('active');
-                if(c.innerText === ROOMS.find(r=>r.id===roomId)?.name || (roomId==='All' && c.innerText==='All')) c.classList.add('active');
+                if (c.getAttribute('data-room-id') === roomId) c.classList.add('active');
             });
             switchTab('calendar');
         }
@@ -2293,13 +2307,10 @@
         }
 
         function syncCalendarFilterChips() {
-            document.querySelectorAll('.cal-chip').forEach(c => {
-                c.classList.remove('active');
-                const selectedRoom = ROOMS.find(r => r.id === state.filterRoom);
-                const chipText = c.innerText.trim();
-                if ((state.filterRoom === 'All' && chipText === 'All') || (selectedRoom && chipText === selectedRoom.name)) {
-                    c.classList.add('active');
-                }
+            // BUG-18 fix: use data-room-id attribute for reliable chip matching instead
+            // of innerText which can fail on whitespace, HTML entities, or font rendering
+            document.querySelectorAll('.cal-chip[data-room-id]').forEach(c => {
+                c.classList.toggle('active', c.getAttribute('data-room-id') === state.filterRoom);
             });
         }
 
@@ -2438,10 +2449,16 @@
                 editBtn.type = 'button';
                 editBtn.className = 'edit';
                 editBtn.innerText = 'Edit';
-                editBtn.onclick = () => {
-                    openDetails(b);
-                    editBooking();
-                };
+                editBtn.onclick = (() => {
+                    // BUG-16 fix: capture `b` in a closure so editBooking() always operates on
+                    // THIS booking even if state.viewBooking is overwritten by a cloud sync
+                    // firing in the brief gap between openDetails() and editBooking() calls.
+                    const capturedBooking = b;
+                    return () => {
+                        openDetails(capturedBooking);
+                        editBooking();
+                    };
+                })();
                 actions.appendChild(editBtn);
 
                 const payBtn = document.createElement('button');
@@ -2511,6 +2528,7 @@
                 let arr = [];
                 let curr = start;
                 while(curr && curr <= end) {
+                    if (!curr) break; // BUG-19 fix: guard against addDaysToYMD returning falsy
                     arr.push(curr);
                     curr = addDaysToYMD(curr, 1);
                 }
@@ -2585,6 +2603,13 @@
                 `;
             });
 
+            // BUG-21 fix: show 'View / Edit Existing Booking' only when there are actual
+            // bookings on this date — hide it when the day is empty to avoid a dead alert
+            const viewExistingBtn = document.getElementById('roomPickerViewExistingBtn');
+            if (viewExistingBtn) {
+                viewExistingBtn.style.display = dayBookings.filter(b => b && b.id != null).length > 0 ? '' : 'none';
+            }
+
             openModal('roomPickerModal');
         }
 
@@ -2633,17 +2658,6 @@
             state.selection = [date];
             openBookingModal(true);
             renderCalendar();
-        }
-
-        function continueAllBookingFromRoomPicker() {
-            const date = state.roomPickerDate;
-            if (!requireCloudLogin('add a booking')) return;
-            closeModal('roomPickerModal');
-            if (!date) return;
-            state.bookingRoomsLocked = false;
-            state.lockedBookingRooms = [];
-            state.roomPickerSelection = [];
-            handleDateTap(date, true);
         }
 
         function openExistingBookingsFromRoomPicker() {
@@ -2745,7 +2759,19 @@
         function updateDateRange() {
             const s = document.getElementById('startDate').value;
             const e = document.getElementById('endDate').value;
-            if(s && e && s < e) {
+            if(s && e) {
+                if (s >= e) {
+                    // BUG-20 fix: Clear selection and show error if dates are invalid
+                    state.selection = [];
+                    const warningEl = document.getElementById('bookingConflictWarning');
+                    if (warningEl) {
+                        warningEl.innerText = '⚠️ Invalid dates! Check-out must be after check-in.';
+                        warningEl.style.display = 'block';
+                    }
+                    calcTotal();
+                    return;
+                }
+
                 let arr = [];
                 let curr = s;
                 const last = addDaysToYMD(e, -1);
@@ -2755,6 +2781,13 @@
                     curr = addDaysToYMD(curr, 1);
                 }
                 state.selection = arr;
+                
+                // Reset warning text for conflict checks
+                const warningEl = document.getElementById('bookingConflictWarning');
+                if (warningEl) {
+                    warningEl.innerText = '⚠️ Room conflict! One or more selected rooms are already booked for these dates. Please adjust the dates or choose a different room.';
+                }
+                
                 checkAndShowDateConflict(); // BUG-04 fix: recheck conflict across full range when dates change
                 calcTotal();
             }
@@ -2892,6 +2925,11 @@
             const guestPhone = document.getElementById('guestPhone').value.trim();
             if(!guestName) return alert('Guest name is required');
             if(!guestPhone) return alert('Guest contact number required');
+            
+            // BUG-30 fix: Add max guest count validation to prevent unrealistic or accidental values
+            const guestCount = parseInt(document.getElementById('guestCount').value, 10);
+            if (isNaN(guestCount) || guestCount < 1 || guestCount > 30) return alert('Guest count must be between 1 and 30');
+
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
             if (!startDate || !endDate || endDate <= startDate || state.selection.length === 0) {
@@ -3083,7 +3121,7 @@
             const category = document.getElementById('exCategory').value || 'uncategorized';
             if(!desc || !amt) return;
             if ((parseFloat(amt) || 0) <= 0) return alert('Expense amount must be greater than 0');
-            const expense = { id: Date.now().toString(), date: exDate, desc, amount: amt, category, updatedAt: new Date().toISOString() };
+            const expense = { id: Date.now().toString(), date: exDate, desc, amount: parseFloat(amt) || 0, category, updatedAt: new Date().toISOString() };
             state.expenses.push(expense);
             persistExpenseToCloud(expense);
             renderExpensesList(); renderMenu();
@@ -3100,7 +3138,7 @@
             if (!desc || !amount) return alert('Description and amount are required');
             if ((parseFloat(amount) || 0) <= 0) return alert('Expense amount must be greater than 0');
             if (!confirm('Save changes to this expense?')) return;
-            const expense = { id: state.editingExpenseId, date, desc, amount, category, updatedAt: new Date().toISOString() };
+            const expense = { id: state.editingExpenseId, date, desc, amount: parseFloat(amount) || 0, category, updatedAt: new Date().toISOString() };
             state.expenses = state.expenses.map(item => String(item.id) === String(state.editingExpenseId) ? expense : item);
             persistExpenseToCloud(expense);
             closeModal('editExpenseModal');
@@ -3225,7 +3263,7 @@
             const source = document.getElementById('mealSource').value || 'meals';
             if(!desc || !amt) return;
             if ((parseFloat(amt) || 0) <= 0) return alert('Income amount must be greater than 0');
-            const meal = { id: Date.now().toString(), date: mealDate, desc, amount: amt, source, updatedAt: new Date().toISOString() };
+            const meal = { id: Date.now().toString(), date: mealDate, desc, amount: parseFloat(amt) || 0, source, updatedAt: new Date().toISOString() };
             state.meals.push(meal);
             persistMealToCloud(meal);
             renderMealsList(); renderMenu();
@@ -3242,7 +3280,7 @@
             if (!desc || !amount) return alert('Description and amount are required');
             if ((parseFloat(amount) || 0) <= 0) return alert('Income amount must be greater than 0');
             if (!confirm('Save changes to this income entry?')) return;
-            const meal = { id: state.editingMealId, date, desc, amount, source, updatedAt: new Date().toISOString() };
+            const meal = { id: state.editingMealId, date, desc, amount: parseFloat(amount) || 0, source, updatedAt: new Date().toISOString() };
             state.meals = state.meals.map(item => String(item.id) === String(state.editingMealId) ? meal : item);
             syncIncomeAlias();
             persistMealToCloud(meal);
@@ -3323,7 +3361,8 @@
         }
 
         function openModal(id) {
-            if ((id === 'expensesModal' || id === 'mealsModal') && !requireCloudLogin('add or edit records')) return;
+            // BUG-32 fix: Ensure price settings modal is also gated by cloud login like other sensitive modals
+            if ((id === 'expensesModal' || id === 'mealsModal' || id === 'priceSettingsModal') && !requireCloudLogin('add or edit records')) return;
             document.getElementById(id).classList.add('open');
             if(id==='inquiryShareModal') {
                 updateInquiryEstimate();
@@ -3376,7 +3415,8 @@
             dDiv.innerHTML = `<div style="background:var(--bg); padding:15px; border-radius:12px;"><div style="font-size:1.2rem; font-weight:700;">${escapeHtml(b.name || b.guestPhone || 'Unknown guest')}</div><div style="color:var(--text-light); margin-top:5px;">${escapeHtml(getBookingRoomSummary(b, true))}</div>${b.guestPhone ? `<div style="font-size:0.85rem; margin-top:5px; color:var(--text-light);">📞 ${escapeHtml(b.guestPhone)}</div>` : ''}${b.source ? `<div style="font-size:0.8rem; margin-top:5px; color:var(--primary); font-weight:600;">Via ${escapeHtml(b.source)}</div>` : ''}</div>${b.notes ? `<div style="background:#FFF3E0; color:#E65100; padding:10px; margin-top:10px; border-radius:8px; font-size:0.9rem;">📝 ${escapeHtml(b.notes)}</div>` : ''}<div style="margin-top:15px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-in</span> <b>${escapeHtml(checkIn)} (2 PM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:10px;"><span>Check-out</span> <b>${escapeHtml(checkOut)} (11 AM)</b></div><div style="margin-top:10px; display:flex; justify-content:space-between; font-size:1.1rem; font-weight:700; align-items:center;"><span>Balance</span> <div style="display:flex; align-items:center;"><span style="color:${bal > 0 ? 'var(--danger)':'var(--success)'}">Rs ${escapeHtml(bal)}</span>${settleBtn}</div></div><div style="margin-top:5px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Total Bill</span> <span>Rs ${escapeHtml(b.total)}</span></div><div style="margin-top:0px; display:flex; justify-content:space-between; color:var(--text-light); font-size:0.9rem;"><span>Amount Received</span> <span>Rs ${escapeHtml(collected)}</span></div>`;
             openModal('detailsModal');
             document.getElementById('btnWhatsapp').onclick = () => {
-                window.open(`https://wa.me/?text=${encodeURIComponent(buildWhatsAppBookingText(b))}`);
+                // BUG-33 fix: Use api.whatsapp.com to prevent desktop issues with wa.me
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(buildWhatsAppBookingText(b))}`);
             };
             const settleAction = document.getElementById('btnSettleAction');
             if (settleAction) {
@@ -3490,7 +3530,8 @@
         function shareInquiryDetails() {
             const text = buildInquiryShareText();
             if (!text) return;
-            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+            // BUG-33 fix: Use api.whatsapp.com to prevent desktop issues with wa.me
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`);
         }
 
         function settleBill(id) {
@@ -3559,7 +3600,7 @@
             if(!found) syncFromCloud(true);
             renderCalendar(); renderHome(); renderAgenda(); renderMenu();
         }
-        function exportData() { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({bookings: state.bookings, expenses: state.expenses, income: state.meals, meals: state.meals, priceSettings: state.priceSettings})); a.download = `lb_backup_${getLocalYMD(new Date())}.json`; a.click(); }
+        function exportData() { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({bookings: collectUniqueBookingsFromDateMap(state.bookings), expenses: state.expenses, income: state.meals, meals: state.meals, priceSettings: state.priceSettings})); a.download = `lb_backup_${getLocalYMD(new Date())}.json`; a.click(); }
         function csvCell(value) {
             const text = String(value == null ? '' : value);
             return `"${text.replace(/"/g, '""')}"`;
@@ -3712,11 +3753,15 @@
                 const statusText = bal <= 0 ? '(Paid)' : `(Due: Rs ${bal})`;
                 const payBtn = bal > 0 ? `<button class="btn-pay-now" type="button" data-settle-booking-id="${escapeAttr(b.id)}">Pay Now</button>` : '';
                 div.innerHTML = `<div class="agenda-date">${escapeHtml(checkIn)} <span style="color:#999; font-weight:400; font-size:0.8rem; margin-left:5px;">(${escapeHtml(b.guests || '-')} Guests)</span></div><div class="agenda-name">${escapeHtml(b.name || b.guestPhone || 'Unknown guest')}</div><div class="agenda-room">${escapeHtml(getBookingRoomSummary(b))}</div><div class="agenda-price">Rs ${escapeHtml(b.total || 0)}<br><span class="agenda-status ${statusClass}">${escapeHtml(statusText)} ${payBtn}</span></div>`;
-                div.onclick = () => openDetails(b);
+                div.onclick = (e) => { if(!e.target.classList.contains('btn-pay-now')) openDetails(b); };
                 list.appendChild(div);
             });
+            list.querySelectorAll('.btn-pay-now').forEach(btn => btn.onclick = (e) => { e.stopPropagation(); settleBooking(btn.dataset.settleBookingId); });
         }
-        function toggleHistory() { setAgendaMode(!state.showHistory); }
+        function setAgendaMode(isHistory) {
+            state.showHistory = isHistory;
+            renderAgenda();
+        }
 
         // --- MENU LOGIC ---
         function renderMenu() {
