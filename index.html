@@ -591,6 +591,10 @@
                 </div>
             </div>
 
+            <div id="bookingConflictWarning" style="display:none; background:#FFEBEE; color:var(--danger); border:1px solid #FFCDD2; border-radius:10px; padding:10px 12px; font-size:0.85rem; font-weight:700; margin-bottom:10px;">
+                ⚠️ Room conflict! One or more selected rooms are already booked for these dates. Please adjust the dates or choose a different room.
+            </div>
+
             <div class="input-group"><label class="input-label">Guest Contact No</label><input type="tel" class="input-field" id="guestPhone" placeholder="e.g. 0711620682"></div>
             <div class="input-group"><label class="input-label">Source</label><select id="bookingSource" class="input-field"><option value="Direct">Direct / Walk-in</option><option value="Booking.com">Booking.com</option><option value="Airbnb">Airbnb</option><option value="Phone">Phone</option></select></div>
             <div id="roomSelectDiv" class="input-group">
@@ -2590,6 +2594,14 @@
             if (!state.roomPickerSelection.length) return alert('Select at least one room');
             if (!requireCloudLogin('add a booking')) return;
 
+            // BUG-02 fix: validate selected rooms are actually free on this date before
+            // opening the booking modal. The room picker UI shows status but is re-rendered
+            // at open time; a late cloud sync could have changed availability since then.
+            const roomsToCheck = state.roomPickerSelection.map(type => ({ type, count: 1, soldAs: getDefaultRoomSetup(type) }));
+            if (checkConflict(roomsToCheck, null, [date])) {
+                return alert('⚠️ One or more selected rooms are already booked on this date. Please choose a different room.');
+            }
+
             const chosenRooms = [...state.roomPickerSelection];
             closeModal('roomPickerModal');
             state.bookingRoomsLocked = true;
@@ -2695,6 +2707,19 @@
             if(!editData) calcTotal(); else updateBalance();
         }
 
+        // BUG-04 helper: check the current date range + selected rooms against existing bookings
+        // and show/hide the inline conflict warning banner in the booking modal.
+        function checkAndShowDateConflict() {
+            const warningEl = document.getElementById('bookingConflictWarning');
+            if (!warningEl) return false;
+            if (state.selection.length === 0) { warningEl.style.display = 'none'; return false; }
+            const rooms = getEffectiveSelectedModalRooms();
+            if (rooms.length === 0) { warningEl.style.display = 'none'; return false; }
+            const hasConflict = checkConflict(rooms, state.editingId, state.selection);
+            warningEl.style.display = hasConflict ? 'block' : 'none';
+            return hasConflict;
+        }
+
         function updateDateRange() {
             const s = document.getElementById('startDate').value;
             const e = document.getElementById('endDate').value;
@@ -2703,10 +2728,12 @@
                 let curr = s;
                 const last = addDaysToYMD(e, -1);
                 while(curr && curr <= last) {
+                    if (!curr) break; // safety guard against infinite loop on bad date
                     arr.push(curr);
                     curr = addDaysToYMD(curr, 1);
                 }
                 state.selection = arr;
+                checkAndShowDateConflict(); // BUG-04 fix: recheck conflict across full range when dates change
                 calcTotal();
             }
         }
@@ -2808,6 +2835,7 @@
             renderBookingRoomUseOptions();
             refreshRateOverrideForSelection();
             updateGuestCountDefault();
+            checkAndShowDateConflict(); // BUG-03/04 fix: recheck conflict when room selection changes
             calcTotal();
         }
 
@@ -2852,65 +2880,81 @@
             const rooms = getEffectiveSelectedModalRooms();
             if(rooms.length === 0) return alert('Select at least one room');
 
+            const saveBtn = document.getElementById('btnSaveBooking');
+            const originalBtnText = saveBtn ? saveBtn.innerText : '';
+            if (saveBtn) { saveBtn.disabled = true; saveBtn.innerText = 'Saving\u2026'; }
+
             const editingId = state.editingId;
             const selectedRange = [...state.selection];
-            let previousBooking = editingId ? findBookingById(editingId) || state.viewBooking : null;
-            if (isCloudConfigured()) await syncFromCloud();
-            state.editingId = editingId;
-            state.selection = selectedRange;
-            if (editingId) previousBooking = findBookingById(editingId) || previousBooking;
-            if(checkConflict(rooms, editingId)) return alert("⚠️ Room Conflict!");
-            const bookingId = editingId || Date.now().toString();
-            const previousLockPaths = editingId ? getExistingBookingLockPaths(editingId) : [];
-            let lockResult;
+
             try {
-                lockResult = await acquireBookingLocks(rooms, selectedRange, bookingId);
-            } catch (error) {
-                console.error('Booking lock failed:', error);
-                return alert('Could not confirm room availability with cloud sync. Please check internet connection and try again.');
-            }
-            if (!lockResult.ok) return alert('⚠️ This room/date was just taken on another device. Please sync and choose another date or room.');
+                let previousBooking = editingId ? findBookingById(editingId) || state.viewBooking : null;
+                if (isCloudConfigured()) await syncFromCloud();
+                state.editingId = editingId;
+                state.selection = selectedRange;
+                if (editingId) previousBooking = findBookingById(editingId) || previousBooking;
+                if(checkConflict(rooms, editingId)) {
+                    alert('\u26a0\ufe0f Room Conflict! These dates are no longer available after the latest sync. Please choose a different date or room.');
+                    return;
+                }
+                const bookingId = editingId || Date.now().toString();
+                const previousLockPaths = editingId ? getExistingBookingLockPaths(editingId) : [];
+                let lockResult;
+                try {
+                    lockResult = await acquireBookingLocks(rooms, selectedRange, bookingId);
+                } catch (error) {
+                    console.error('Booking lock failed:', error);
+                    alert('Could not confirm room availability with cloud sync. Please check internet connection and try again.');
+                    return;
+                }
+                if (!lockResult.ok) {
+                    alert('\u26a0\ufe0f This room/date was just taken on another device. Please sync and choose another date or room.');
+                    return;
+                }
 
-            if (editingId) {
-                Object.keys(state.bookings).forEach(d => {
-                    state.bookings[d] = state.bookings[d].filter(b => String(b.id) !== String(editingId));
-                    if(state.bookings[d].length === 0) delete state.bookings[d];
+                if (editingId) {
+                    Object.keys(state.bookings).forEach(d => {
+                        state.bookings[d] = state.bookings[d].filter(b => String(b.id) !== String(editingId));
+                        if(state.bookings[d].length === 0) delete state.bookings[d];
+                    });
+                }
+
+                const booking = {
+                    id: bookingId,
+                    name: guestPhone, rooms, 
+                    guests: document.getElementById('guestCount').value,
+                    guestPhone: guestPhone,
+                    advance: advance,
+                    total: total, 
+                    range: [...selectedRange],
+                    notes: document.getElementById('bookingNotes').value,
+                    source: document.getElementById('bookingSource').value,
+                    updatedAt: new Date().toISOString(),
+                    paymentHistory: editingId
+                        ? syncBookingPaymentHistory(previousBooking, advance)
+                        : (advance > 0 ? [{
+                            id: `pay_${Date.now()}`,
+                            date: getLocalYMD(new Date()),
+                            amount: advance,
+                            note: 'Advance received'
+                        }] : [])
+                };
+
+                selectedRange.forEach(d => {
+                    if(!state.bookings[d]) state.bookings[d] = [];
+                    state.bookings[d].push(booking);
                 });
+
+                persistBookingToCloud(booking);
+                previousLockPaths
+                    .filter(path => !lockResult.keys.includes(path))
+                    .forEach(path => queueCloudOperation('DELETE', path));
+                closeModal('bookingModal');
+                state.selection = []; state.editingId = null;
+                renderCalendar(); renderHome(); renderAgenda(); renderMenu();
+            } finally {
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.innerText = originalBtnText; }
             }
-
-            const booking = {
-                id: bookingId,
-                name: guestPhone, rooms, 
-                guests: document.getElementById('guestCount').value,
-                guestPhone: guestPhone,
-                advance: advance,
-                total: total, 
-                range: [...selectedRange],
-                notes: document.getElementById('bookingNotes').value,
-                source: document.getElementById('bookingSource').value,
-                updatedAt: new Date().toISOString(),
-                paymentHistory: editingId
-                    ? syncBookingPaymentHistory(previousBooking, advance)
-                    : (advance > 0 ? [{
-                        id: `pay_${Date.now()}`,
-                        date: getLocalYMD(new Date()),
-                        amount: advance,
-                        note: 'Advance received'
-                    }] : [])
-            };
-
-            selectedRange.forEach(d => {
-                if(!state.bookings[d]) state.bookings[d] = [];
-                state.bookings[d].push(booking);
-            });
-
-            persistBookingToCloud(booking);
-            previousLockPaths
-                .filter(path => !lockResult.keys.includes(path))
-                .forEach(path => queueCloudOperation('DELETE', path));
-            closeModal('bookingModal');
-            state.selection = []; state.editingId = null;
-            renderCalendar(); renderHome(); renderAgenda(); renderMenu();
         }
 
         // --- EXPENSES ---
