@@ -595,6 +595,7 @@
                 ⚠️ Room conflict! One or more selected rooms are already booked for these dates. Please adjust the dates or choose a different room.
             </div>
 
+            <div class="input-group"><label class="input-label">Guest Name</label><input type="text" class="input-field" id="guestName" placeholder="e.g. Kavindu Naveen" autocomplete="off"></div>
             <div class="input-group"><label class="input-label">Guest Contact No</label><input type="tel" class="input-field" id="guestPhone" placeholder="e.g. 0711620682"></div>
             <div class="input-group"><label class="input-label">Source</label><select id="bookingSource" class="input-field"><option value="Direct">Direct / Walk-in</option><option value="Booking.com">Booking.com</option><option value="Airbnb">Airbnb</option><option value="Phone">Phone</option></select></div>
             <div id="roomSelectDiv" class="input-group">
@@ -2090,22 +2091,23 @@
                 let bookingsToOpen = [];
 
                 if (r.id === 'Full Villa') {
-                   if (state.bookings[today] && state.bookings[today].length > 0) {
-                       isBooked = true;
-                       bookingsToOpen = state.bookings[today].filter(b => b && b.id != null);
-                       const villaBooking = state.bookings[today].find(b => getBookingRooms(b).some(rm => rm.type === 'Full Villa'));
-                       if (villaBooking) {
-                           bookingToOpen = villaBooking;
-                           guestName = villaBooking.name;
-                           bal = getBookingBalance(villaBooking);
-                           paymentStatus = bal <= 0 ? 'PAID' : `DUE: ${bal}`;
-                           statusClass = bal <= 0 ? 'paid' : 'booked';
-                       } else {
-                           guestName = "Occupied";
-                           paymentStatus = "UNAVAILABLE";
-                           statusClass = "blocked"; // blocked by room
-                       }
-                   }
+                    const todayBookings = state.bookings[today] || [];
+                    const villaBooking = todayBookings.find(b => b && b.id != null && getBookingRooms(b).some(rm => rm.type === 'Full Villa'));
+                    if (villaBooking) {
+                        isBooked = true;
+                        bookingToOpen = villaBooking;
+                        bookingsToOpen = [villaBooking];
+                        guestName = villaBooking.name || villaBooking.guestPhone || 'Unknown guest';
+                        bal = getBookingBalance(villaBooking);
+                        paymentStatus = bal <= 0 ? 'PAID' : `DUE: ${bal}`;
+                        statusClass = bal <= 0 ? 'paid' : 'booked';
+                    } else if (todayBookings.filter(b => b && b.id != null).length > 0) {
+                        isBooked = true;
+                        bookingsToOpen = todayBookings.filter(b => b && b.id != null);
+                        guestName = 'Individual Rooms';
+                        paymentStatus = 'UNAVAILABLE';
+                        statusClass = 'blocked';
+                    }
                 } else {
                     if (state.bookings[today]) {
                         const booking = state.bookings[today].find(b => {
@@ -2493,6 +2495,14 @@
 
             // Normal Booking Logic
             if (!requireCloudLogin('add a booking')) return;
+            // BUG-14 fix: when in All-rooms view, always route through the room picker
+            // to ensure a room is explicitly chosen before the booking modal opens.
+            // Without this guard, skipRoomPicker=true + no relevant bookings let users
+            // reach openBookingModal() with filterRoom='All' and no room selected.
+            if (state.filterRoom === 'All') {
+                openRoomPickerForDate(date);
+                return;
+            }
             if (state.selection.length === 0 || state.selection.length > 1) {
                 state.selection = [date];
             } else {
@@ -2685,6 +2695,7 @@
             document.getElementById('bookModalTitle').innerText = editData ? 'Edit Booking' : (state.filterRoom === 'All' ? 'New Booking' : state.filterRoom);
             document.getElementById('btnSaveBooking').innerText = editData ? 'Update Booking' : 'Confirm Booking';
             
+            document.getElementById('guestName').value = editData ? (editData.name !== editData.guestPhone ? (editData.name || '') : '') : ''; // BUG-10: populate guest name (skip if legacy name==phone)
             document.getElementById('guestPhone').value = editData ? (editData.guestPhone || '') : '';
             document.getElementById('advance').value = editData ? getBookingCollectedTotal(editData) : '';
             document.getElementById('bookingNotes').value = editData ? editData.notes || '' : '';
@@ -2866,8 +2877,10 @@
         }
 
         function updateBalance() {
-            const total = parseInt(document.getElementById('totalAmount').value) || 0;
-            const adv = parseInt(document.getElementById('advance').value) || 0;
+            // BUG-09 fix: use parseFloat instead of parseInt so decimal prices (e.g. Rs 6500.50)
+            // are not silently truncated to whole numbers, causing wrong balance calculations.
+            const total = parseFloat(document.getElementById('totalAmount').value) || 0;
+            const adv = parseFloat(document.getElementById('advance').value) || 0;
             const bal = total - adv;
             document.getElementById('balanceDisplay').innerText = `Rs ${bal}`;
             document.getElementById('balanceDisplay').style.color = bal <= 0 ? 'var(--success)' : 'var(--primary)';
@@ -2875,15 +2888,17 @@
 
         async function saveBooking() {
             if (!requireCloudLogin('save a booking')) return;
+            const guestName = document.getElementById('guestName').value.trim();
             const guestPhone = document.getElementById('guestPhone').value.trim();
+            if(!guestName) return alert('Guest name is required');
             if(!guestPhone) return alert('Guest contact number required');
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
             if (!startDate || !endDate || endDate <= startDate || state.selection.length === 0) {
                 return alert('Select a valid check-in and check-out date');
             }
-            const total = parseInt(document.getElementById('totalAmount').value) || 0;
-            const advance = parseInt(document.getElementById('advance').value) || 0;
+            const total = parseFloat(document.getElementById('totalAmount').value) || 0; // BUG-09: parseFloat for decimal prices
+            const advance = parseFloat(document.getElementById('advance').value) || 0;   // BUG-09: parseFloat for decimal amounts
             if (total <= 0) return alert('Total amount must be greater than 0');
             if (advance < 0) return alert('Amount received cannot be negative');
             if (advance > total) return alert('Amount received cannot be greater than total amount');
@@ -2932,7 +2947,8 @@
 
                 const booking = {
                     id: bookingId,
-                    name: guestPhone, rooms, 
+                    name: guestName || guestPhone, // BUG-10: store real guest name; fall back to phone for old-style edits
+                    rooms,
                     guests: document.getElementById('guestCount').value,
                     guestPhone: guestPhone,
                     advance: advance,
@@ -3486,7 +3502,10 @@
                     if(String(b.id) === String(id)) {
                         const currentCollected = getBookingCollectedTotal(b);
                         const settlementAmount = (parseFloat(b.total) || 0) - currentCollected;
-                        b.advance = b.total; 
+
+                        // BUG-08 fix: build the FULL payment history first, THEN set b.advance
+                        // from the actual sum. Previously b.advance = b.total was set before
+                        // the history was built, making it stale relative to paymentHistory.
                         b.paymentHistory = getBookingPaymentHistory(b);
                         if (b.paymentHistory.length === 0 && currentCollected > 0) {
                             b.paymentHistory.push({
@@ -3505,6 +3524,8 @@
                             });
                             b.paymentHistory = normalizePaymentHistory(b.paymentHistory);
                         }
+                        // BUG-08 fix: sync advance to the true collected total after history is final
+                        b.advance = b.paymentHistory.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
                         updatedBooking = b; 
                         found = true;
                     }
@@ -3675,7 +3696,14 @@
                 const checkIn = Array.isArray(b.range) && b.range[0] ? b.range[0] : '-';
                 if (checkIn === today) headerText = 'Today';
                 else if (checkIn === tomorrow) headerText = 'Tomorrow';
-                else headerText = state.showHistory ? checkIn.slice(0, 7) : 'Later';
+                else {
+                    // BUG-13 fix: group both upcoming and past bookings by month (YYYY-MM)
+                    // instead of collapsing all upcoming into a single useless "Later" header.
+                    const monthKey = checkIn.slice(0, 7); // "YYYY-MM"
+                    const [yr, mo] = monthKey.split('-');
+                    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                    headerText = `${monthNames[parseInt(mo, 10) - 1]} ${yr}`;
+                }
                 if (headerText !== lastHeader) { list.innerHTML += `<div class="agenda-header">${headerText}</div>`; lastHeader = headerText; }
                 const div = document.createElement('div'); div.className = 'agenda-item';
                 div.style.borderLeftColor = getBookingSetupColor(b);
