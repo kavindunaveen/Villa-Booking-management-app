@@ -412,6 +412,7 @@
             position: fixed; inset: 0; z-index: 9999;
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
             background: linear-gradient(135deg, var(--bg) 0%, var(--card) 100%);
+            transition: opacity 0.3s;
         }
         .loader-spinner {
             width: 44px; height: 44px; border-radius: 50%;
@@ -2929,7 +2930,7 @@
             const total = parseFloat(document.getElementById('totalAmount').value) || 0;
             const adv = parseFloat(document.getElementById('advance').value) || 0;
             const bal = total - adv;
-            document.getElementById('balanceDisplay').innerText = `Rs ${bal}`;
+            document.getElementById('balanceDisplay').innerText = `Rs ${bal.toLocaleString('en-US')}`;
             document.getElementById('balanceDisplay').style.color = bal <= 0 ? 'var(--success)' : 'var(--primary)';
         }
 
@@ -3770,11 +3771,7 @@
                 div.onclick = (e) => { if(!e.target.classList.contains('btn-pay-now')) openDetails(b); };
                 list.appendChild(div);
             });
-            list.querySelectorAll('.btn-pay-now').forEach(btn => btn.onclick = (e) => { e.stopPropagation(); settleBooking(btn.dataset.settleBookingId); });
-        }
-        function setAgendaMode(isHistory) {
-            state.showHistory = isHistory;
-            renderAgenda();
+            list.querySelectorAll('.btn-pay-now').forEach(btn => btn.onclick = (e) => { e.stopPropagation(); settleBill(btn.dataset.settleBookingId); });
         }
 
         // --- MENU LOGIC ---
