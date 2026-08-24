@@ -3857,7 +3857,10 @@
                     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
                     headerText = `${monthNames[parseInt(mo, 10) - 1]} ${yr}`;
                 }
-                if (headerText !== lastHeader) { list.innerHTML += `<div class="agenda-header">${headerText}</div>`; lastHeader = headerText; }
+                if (headerText !== lastHeader) { 
+                    list.insertAdjacentHTML('beforeend', `<div class="agenda-header">${headerText}</div>`);
+                    lastHeader = headerText; 
+                }
                 const div = document.createElement('div'); div.className = 'agenda-item';
                 div.style.borderLeftColor = getBookingSetupColor(b);
                 const bal = getBookingOutstandingBalance(b);
