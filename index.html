@@ -1645,7 +1645,7 @@
         }
         function uploadThisDeviceToCloud() {
             if (!isCloudConfigured()) return showToast('Cloud sync is not configured.');
-            if (!(await showConfirm('Replace the cloud bookings, expenses, income, and room prices with the data currently on this device?')) return;
+            if (!(await showConfirm('Replace the cloud bookings, expenses, income, and room prices with the data currently on this device?'))) return;
             replaceCloudWithLocalData();
             setCloudSyncStatus('syncing', 'Uploading this device data...');
         }
@@ -3161,7 +3161,7 @@
             const villaRate = parseFloat(document.getElementById('priceVilla').value) || 0;
             if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)) return showToast('Select a valid effective date');
             if ([doubleRate, tripleRate, familyRate, villaRate].some(rate => rate <= 0)) return showToast('All room prices must be greater than 0');
-            if (!(await showConfirm(`Apply these new prices from ${effectiveFrom}? Existing bookings will keep their saved totals.`)) return;
+            if (!(await showConfirm(`Apply these new prices from ${effectiveFrom}? Existing bookings will keep their saved totals.`))) return;
 
             const entry = {
                 id: `price_${Date.now()}`,
@@ -3218,7 +3218,7 @@
             const category = document.getElementById('editExCategory').value || 'uncategorized';
             if (!desc || !amount) return showToast('Description and amount are required');
             if ((parseFloat(amount) || 0) <= 0) return showToast('Expense amount must be greater than 0');
-            if (!(await showConfirm('Save changes to this expense?')) return;
+            if (!(await showConfirm('Save changes to this expense?'))) return;
             const expense = { id: state.editingExpenseId, date, desc, amount: parseFloat(amount) || 0, category, updatedAt: new Date().toISOString() };
             state.expenses = state.expenses.map(item => String(item.id) === String(state.editingExpenseId) ? expense : item);
             persistExpenseToCloud(expense);
@@ -3233,7 +3233,7 @@
             const expense = state.expenses.find(e => String(e.id) === String(id));
             if (!expense) return;
             const label = category === 'villa' ? 'Villa Expense' : 'Home Expense';
-            if (!(await showConfirm(`Mark this as ${label}?`)) return;
+            if (!(await showConfirm(`Mark this as ${label}?`))) return;
             const updated = { ...expense, category };
             state.expenses = state.expenses.map(item => String(item.id) === String(id) ? updated : item);
             persistExpenseToCloud(updated);
@@ -3308,12 +3308,12 @@
                 </div>`;
             });
         }
-        async function deleteExpense(id) { if(!requireCloudLogin('delete an expense')) return; if(!(await showConfirm("Delete?")) return; state.expenses = state.expenses.filter(e => String(e.id) !== String(id)); if(String(state.editingExpenseId) === String(id)) clearExpenseEditForm(); deleteExpenseFromCloud(id); renderExpensesList(); renderMenu(); }
+        async function deleteExpense(id) { if(!requireCloudLogin('delete an expense')) return; if(!(await showConfirm("Delete?"))) return; state.expenses = state.expenses.filter(e => String(e.id) !== String(id)); if(String(state.editingExpenseId) === String(id)) clearExpenseEditForm(); deleteExpenseFromCloud(id); renderExpensesList(); renderMenu(); }
         async function deleteEditingExpense() {
             if (!requireCloudLogin('delete an expense')) return;
             if (!state.editingExpenseId) return;
             const id = state.editingExpenseId;
-            if(!(await showConfirm("Delete this expense?")) return;
+            if(!(await showConfirm("Delete this expense?"))) return;
             state.expenses = state.expenses.filter(e => String(e.id) !== String(id));
             deleteExpenseFromCloud(id);
             closeModal('editExpenseModal');
@@ -3360,7 +3360,7 @@
             const source = document.getElementById('editMealSource').value || 'meals';
             if (!desc || !amount) return showToast('Description and amount are required');
             if ((parseFloat(amount) || 0) <= 0) return showToast('Income amount must be greater than 0');
-            if (!(await showConfirm('Save changes to this income entry?')) return;
+            if (!(await showConfirm('Save changes to this income entry?'))) return;
             const meal = { id: state.editingMealId, date, desc, amount: parseFloat(amount) || 0, source, updatedAt: new Date().toISOString() };
             state.meals = state.meals.map(item => String(item.id) === String(state.editingMealId) ? meal : item);
             syncIncomeAlias();
@@ -3428,12 +3428,12 @@
                 </div>`;
             });
         }
-        async function deleteMeal(id) { if(!requireCloudLogin('delete income')) return; if(!(await showConfirm("Delete?")) return; state.meals = state.meals.filter(m => String(m.id) !== String(id)); syncIncomeAlias(); if(String(state.editingMealId) === String(id)) clearMealEditForm(); deleteMealFromCloud(id); renderMealsList(); renderMenu(); }
+        async function deleteMeal(id) { if(!requireCloudLogin('delete income')) return; if(!(await showConfirm("Delete?"))) return; state.meals = state.meals.filter(m => String(m.id) !== String(id)); syncIncomeAlias(); if(String(state.editingMealId) === String(id)) clearMealEditForm(); deleteMealFromCloud(id); renderMealsList(); renderMenu(); }
         async function deleteEditingMeal() {
             if (!requireCloudLogin('delete income')) return;
             if (!state.editingMealId) return;
             const id = state.editingMealId;
-            if(!(await showConfirm("Delete this income entry?")) return;
+            if(!(await showConfirm("Delete this income entry?"))) return;
             state.meals = state.meals.filter(m => String(m.id) !== String(id));
             syncIncomeAlias();
             deleteMealFromCloud(id);
@@ -3617,7 +3617,7 @@
 
         async function settleBill(id) {
             if (!requireCloudLogin('update a payment')) return;
-            if(!(await showConfirm("Mark as Fully Paid?")) return;
+            if(!(await showConfirm("Mark as Fully Paid?"))) return;
             let updatedBooking = null; let found = false;
             Object.keys(state.bookings).forEach(d => {
                 state.bookings[d] = state.bookings[d].map(b => {
@@ -3663,7 +3663,7 @@
         }
         async function deleteBooking() {
             if (!requireCloudLogin('delete a booking')) return;
-            if(!(await showConfirm("Delete?")) return;
+            if(!(await showConfirm("Delete?"))) return;
             const id = String(state.viewId || '');
             if (!id) return showToast('Could not find this booking ID. Please close and open the booking again.');
             let found = false;
