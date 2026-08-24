@@ -40,6 +40,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: var(--bg); margin: 0; padding: 0;
             color: var(--text-main); height: 100vh; display: flex; flex-direction: column;
+            transition: background-color 0.3s, color 0.3s;
         }
 
         /* --- LAYOUT --- */
@@ -48,6 +49,7 @@
             display: flex; justify-content: space-between; align-items: center;
             padding-top: max(15px, env(safe-area-inset-top));
             position: sticky; top: 0; z-index: 50;
+            transition: background-color 0.3s, border-color 0.3s;
         }
         .app-title { font-size: 1.2rem; font-weight: 800; color: var(--primary); }
         .header-icon {
@@ -68,8 +70,8 @@
         .sync-status.error { color: var(--danger); }
 
         .main-content {
-            flex: 1; overflow-y: auto; padding-bottom: calc(var(--nav-height) + 20px);
-            position: relative;
+            flex: 1; overflow: hidden; padding-bottom: calc(var(--nav-height));
+            position: relative; display: flex; flex-direction: column;
         }
 
         .bottom-nav {
@@ -77,6 +79,7 @@
             background: var(--card); border-top: 1px solid var(--border);
             display: flex; justify-content: space-around; padding-bottom: var(--safe-bottom);
             z-index: 100;
+            transition: background-color 0.3s, border-color 0.3s;
         }
         .nav-item {
             flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -85,7 +88,7 @@
         .nav-item i { font-size: 1.4rem; margin-bottom: 4px; }
         .nav-item.active { color: var(--primary); transform: translateY(-2px); }
 
-        .screen { display: none; padding: 15px; animation: fadeIn 0.2s; }
+        .screen { display: none; padding: 15px; animation: fadeIn 0.2s; flex: 1; overflow-y: auto; }
         .screen.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -93,7 +96,7 @@
         .room-card {
             background: var(--card); border-radius: 16px; padding: 15px; margin-bottom: 15px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center;
-            border-left: 6px solid var(--primary); transition: transform 0.1s;
+            border-left: 6px solid var(--primary); transition: transform 0.1s, background-color 0.3s;
         }
         .room-card:active { transform: scale(0.98); }
         .room-info h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
@@ -423,6 +426,36 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         #fileInput { display: none; }
+    
+        /* TOAST & CONFIRM MODAL */
+        #toast-container {
+            position: fixed; bottom: max(20px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+            z-index: 10000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; width: 90%; max-width: 400px;
+        }
+        .toast {
+            background: var(--text-main); color: var(--bg); padding: 12px 20px; border-radius: 12px;
+            font-weight: 500; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex; align-items: center; gap: 10px; animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: auto;
+        }
+        .toast.error { background: var(--danger); color: white; }
+        .toast.success { background: var(--success); color: white; }
+        .toast.fade-out { animation: toastOut 0.3s forwards; }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes toastOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(20px) scale(0.9); } }
+
+        #confirmModal .sheet { max-height: auto; min-height: 0; padding-bottom: 20px; }
+        .confirm-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .confirm-actions button { flex: 1; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; border: none; }
+        .btn-cancel { background: var(--bg); color: var(--text-main); border: 1px solid var(--border); }
+        .btn-confirm { background: var(--danger); color: white; }
+        
+        .modal-close-top {
+            position: absolute; top: 15px; right: 15px; width: 30px; height: 30px;
+            border-radius: 50%; background: var(--bg); display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: var(--text-light); z-index: 10; border: 1px solid var(--border);
+        }
+    
     </style>
 </head>
 <body>
@@ -596,6 +629,7 @@
     <!-- BOOKING MODAL -->
     <div class="modal-overlay" id="bookingModal">
         <div class="sheet">
+            <div class="modal-close-top" onclick="closeModal('bookingModal')"><i class="fas fa-times"></i></div>
             <h3 id="bookModalTitle" style="margin-top:0;">New Booking</h3>
             
             <div style="display:flex; gap:12px; margin-bottom:15px;">
@@ -626,10 +660,10 @@
             </div>
             <div id="rateOverrideDiv" class="input-group" style="display:none;"><label class="input-label">Pricing Option</label><select id="rateSelect" class="input-field" onchange="calcTotal()"></select></div>
             <div style="display:flex; gap:12px;">
-                <div class="input-group" style="flex:1"><label class="input-label">Guests</label><input type="number" class="input-field" id="guestCount" value="2" oninput="this.dataset.autoGuest='0'"></div>
-                <div class="input-group" style="flex:1"><label class="input-label">Total Bill (Rs)</label><input type="number" class="input-field" id="totalAmount" placeholder="0" oninput="updateBalance()"></div>
+                <div class="input-group" style="flex:1"><label class="input-label">Guests</label><input type="number" min="0" class="input-field" id="guestCount" value="2" oninput="this.dataset.autoGuest='0'"></div>
+                <div class="input-group" style="flex:1"><label class="input-label">Total Bill (Rs)</label><input type="number" min="0" class="input-field" id="totalAmount" placeholder="0" oninput="updateBalance()"></div>
             </div>
-            <div class="input-group"><label class="input-label">Amount Received So Far (Rs)</label><input type="number" class="input-field" id="advance" placeholder="0" oninput="updateBalance()"></div>
+            <div class="input-group"><label class="input-label">Amount Received So Far (Rs)</label><input type="number" min="0" class="input-field" id="advance" placeholder="0" oninput="updateBalance()"></div>
             <div class="input-group"><label class="input-label">Notes</label><input type="text" class="input-field" id="bookingNotes" placeholder="e.g. Late check-in"></div>
             <div style="background:var(--bg); padding:15px; border-radius:12px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
                 <span style="color:var(--text-light); font-size:0.9rem;">Balance Due</span><span id="balanceDisplay" style="font-weight:800; font-size:1.1rem; color:var(--primary);">Rs 0</span>
@@ -642,6 +676,7 @@
     <!-- CALENDAR ROOM PICKER MODAL -->
     <div class="modal-overlay" id="roomPickerModal">
         <div class="sheet">
+            <div class="modal-close-top" onclick="closeModal('roomPickerModal')"><i class="fas fa-times"></i></div>
             <h3 style="margin-top:0;">Select Room(s)</h3>
             <div id="roomPickerDateLabel" style="color:var(--text-light); font-weight:600; margin-bottom:14px;"></div>
             <div id="roomPickerList" class="room-picker-list"></div>
@@ -654,6 +689,7 @@
     <!-- PRE-BOOKING SHARE MODAL -->
     <div class="modal-overlay" id="inquiryShareModal">
         <div class="sheet">
+            <div class="modal-close-top" onclick="closeModal('inquiryShareModal')"><i class="fas fa-times"></i></div>
             <h3 style="margin-top:0;">Share Pre-Booking Details</h3>
             <div class="input-group">
                 <label class="input-label">Check-in</label>
@@ -685,6 +721,7 @@
     <!-- DETAILS MODAL -->
     <div class="modal-overlay" id="detailsModal">
         <div class="sheet">
+            <div class="modal-close-top" onclick="closeModal('detailsModal')"><i class="fas fa-times"></i></div>
             <h3 style="margin-top:0;">Booking Details</h3>
             <div id="detailsContent" style="margin-bottom:25px; font-size:1rem; color:var(--text-main);"></div>
             <div id="actionButtons">
@@ -701,6 +738,7 @@
     <!-- EXPENSES MODAL -->
     <div class="modal-overlay" id="expensesModal">
         <div class="sheet txn-sheet">
+            <div class="modal-close-top" onclick="closeModal('expensesModal')"><i class="fas fa-times"></i></div>
             <div class="txn-sheet-scroll">
                 <h3 style="margin-top:0;">Expenses</h3>
                 <div id="expensesMonthHint" style="color:var(--text-light); font-weight:600; margin-bottom:10px;"></div>
@@ -717,7 +755,7 @@
                         <div class="form-grid two txn-amount-date-grid">
                             <div class="input-group">
                                 <label class="input-label">Amount</label>
-                                <input type="number" id="exAmount" class="input-field" placeholder="0">
+                                <input type="number" min="0" id="exAmount" class="input-field" placeholder="0">
                             </div>
                             <div class="input-group">
                                 <label class="input-label">Date</label>
@@ -752,6 +790,7 @@
     <!-- MEALS MODAL -->
     <div class="modal-overlay" id="mealsModal">
         <div class="sheet txn-sheet">
+            <div class="modal-close-top" onclick="closeModal('mealsModal')"><i class="fas fa-times"></i></div>
             <div class="txn-sheet-scroll">
                 <h3 style="margin-top:0;">Income</h3>
                 <div id="mealsMonthHint" style="color:var(--text-light); font-weight:600; margin-bottom:10px;"></div>
@@ -768,7 +807,7 @@
                         <div class="form-grid two txn-amount-date-grid">
                             <div class="input-group">
                                 <label class="input-label">Amount</label>
-                                <input type="number" id="mealAmount" class="input-field" placeholder="0">
+                                <input type="number" min="0" id="mealAmount" class="input-field" placeholder="0">
                             </div>
                             <div class="input-group">
                                 <label class="input-label">Date</label>
@@ -801,6 +840,7 @@
     <!-- EDIT EXPENSE MODAL -->
     <div class="modal-overlay" id="editExpenseModal">
         <div class="sheet edit-txn-sheet">
+            <div class="modal-close-top" onclick="closeModal('editExpenseModal')"><i class="fas fa-times"></i></div>
             <h3 style="margin-top:0;">Edit Expense</h3>
             <div class="form-card edit-form-card">
                 <div class="input-group">
@@ -810,7 +850,7 @@
                 <div class="form-grid two txn-amount-date-grid">
                     <div class="input-group">
                         <label class="input-label">Amount</label>
-                        <input type="number" id="editExAmount" class="input-field">
+                        <input type="number" min="0" id="editExAmount" class="input-field">
                     </div>
                     <div class="input-group">
                         <label class="input-label">Date</label>
@@ -839,6 +879,7 @@
     <!-- EDIT INCOME MODAL -->
     <div class="modal-overlay" id="editMealModal">
         <div class="sheet edit-txn-sheet">
+            <div class="modal-close-top" onclick="closeModal('editMealModal')"><i class="fas fa-times"></i></div>
             <h3 style="margin-top:0;">Edit Income</h3>
             <div class="form-card edit-form-card">
                 <div class="input-group">
@@ -848,7 +889,7 @@
                 <div class="form-grid two txn-amount-date-grid">
                     <div class="input-group">
                         <label class="input-label">Amount</label>
-                        <input type="number" id="editMealAmount" class="input-field">
+                        <input type="number" min="0" id="editMealAmount" class="input-field">
                     </div>
                     <div class="input-group">
                         <label class="input-label">Date</label>
@@ -876,6 +917,7 @@
     <!-- CLOUD AUTH MODAL -->
     <div class="modal-overlay" id="authModal">
         <div class="sheet edit-txn-sheet">
+            <div class="modal-close-top" onclick="closeModal('authModal')"><i class="fas fa-times"></i></div>
             <h3 style="margin-top:0;">Cloud Login</h3>
             <div id="authConfigNotice" class="auth-note" style="margin-bottom:12px;"></div>
             <div class="form-card edit-form-card">
@@ -901,6 +943,7 @@
     <!-- PRICE SETTINGS MODAL -->
     <div class="modal-overlay" id="priceSettingsModal">
         <div class="sheet edit-txn-sheet">
+            <div class="modal-close-top" onclick="closeModal('priceSettingsModal')"><i class="fas fa-times"></i></div>
             <h3 style="margin-top:0;">Room Price Settings</h3>
             <div class="auth-note" style="margin-bottom:12px;">
                 New prices apply from the effective date onward. Existing bookings keep their saved total.
@@ -913,21 +956,21 @@
                 <div class="form-grid two txn-amount-date-grid">
                     <div class="input-group">
                         <label class="input-label">Double Room</label>
-                        <input type="number" id="priceDouble" class="input-field" placeholder="0">
+                        <input type="number" min="0" id="priceDouble" class="input-field" placeholder="0">
                     </div>
                     <div class="input-group">
                         <label class="input-label">Triple Rooms (1 & 2)</label>
-                        <input type="number" id="priceTriple" class="input-field" placeholder="0">
+                        <input type="number" min="0" id="priceTriple" class="input-field" placeholder="0">
                     </div>
                 </div>
                 <div class="form-grid two txn-amount-date-grid">
                     <div class="input-group">
                         <label class="input-label">Family Room</label>
-                        <input type="number" id="priceFamily" class="input-field" placeholder="0">
+                        <input type="number" min="0" id="priceFamily" class="input-field" placeholder="0">
                     </div>
                     <div class="input-group">
                         <label class="input-label">Full Villa</label>
-                        <input type="number" id="priceVilla" class="input-field" placeholder="0">
+                        <input type="number" min="0" id="priceVilla" class="input-field" placeholder="0">
                     </div>
                 </div>
             </div>
@@ -935,6 +978,19 @@
             <div class="edit-actions">
                 <button class="btn btn-primary btn-compact" onclick="savePriceSettings()">Apply New Prices</button>
                 <button class="btn btn-outline btn-compact" onclick="closeModal('priceSettingsModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    
+    <div id="toast-container"></div>
+    <div class="modal-overlay" id="confirmModal">
+        <div class="sheet" style="border-radius: 16px; margin: auto; max-width: 400px; padding: 20px;">
+            <h3 style="margin-top:0;" id="confirmTitle">Confirm Action</h3>
+            <p id="confirmMessage" style="color:var(--text-light); margin-bottom: 0;"></p>
+            <div class="confirm-actions">
+                <button class="btn-cancel" id="btnConfirmCancel">Cancel</button>
+                <button class="btn-confirm" id="btnConfirmAction">Confirm</button>
             </div>
         </div>
     </div>
@@ -1123,7 +1179,7 @@
         }
         function requireCloudLogin(action = 'make changes') {
             if (isCloudAuthReady()) return true;
-            alert(`Please login to Cloud Login before you ${action}.`);
+            showToast(`Please login to Cloud Login before you ${action}.`);
             openModal('authModal');
             return false;
         }
@@ -1323,12 +1379,12 @@
         }
         async function loginCloudUser() {
             if (!isAuthConfigured()) {
-                alert('Firebase Web API Key is missing in index.html. Add it to FIREBASE_WEB_API_KEY, enable Email/Password Auth, then login here.');
+                showToast('Firebase Web API Key is missing in index.html. Add it to FIREBASE_WEB_API_KEY, enable Email/Password Auth, then login here.');
                 return;
             }
             const email = document.getElementById('authEmail').value.trim();
             const password = document.getElementById('authPassword').value;
-            if (!email || !password) return alert('Enter email and password');
+            if (!email || !password) return showToast('Enter email and password');
             setCloudSyncStatus('syncing', 'Logging in...');
             try {
                 const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(FIREBASE_WEB_API_KEY)}`, {
@@ -1349,7 +1405,7 @@
             } catch (error) {
                 console.error('Cloud login failed:', error);
                 setCloudSyncStatus('error', 'Login failed');
-                alert(`Cloud login failed: ${error.message}`);
+                showToast(`Cloud login failed: ${error.message}`);
             }
         }
         function logoutCloudUser() {
@@ -1588,8 +1644,8 @@
             queueCloudOperation('PUT', 'priceSettings', state.priceSettings);
         }
         function uploadThisDeviceToCloud() {
-            if (!isCloudConfigured()) return alert('Cloud sync is not configured.');
-            if (!confirm('Replace the cloud bookings, expenses, income, and room prices with the data currently on this device?')) return;
+            if (!isCloudConfigured()) return showToast('Cloud sync is not configured.');
+            if (!(await showConfirm('Replace the cloud bookings, expenses, income, and room prices with the data currently on this device?')) return;
             replaceCloudWithLocalData();
             setCloudSyncStatus('syncing', 'Uploading this device data...');
         }
@@ -1963,6 +2019,16 @@
         }
         
         document.addEventListener('DOMContentLoaded', () => {
+
+        // Modal overlay outside click to close
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('mousedown', (e) => {
+                if (e.target === overlay && overlay.id !== 'confirmModal' && overlay.id !== 'app-loader') {
+                    closeModal(overlay.id);
+                }
+            });
+        });
+
             if(localStorage.getItem('theme') === 'dark') document.body.setAttribute('data-theme', 'dark');
             document.addEventListener('click', handleDelegatedButtonClick);
             
@@ -1970,7 +2036,7 @@
                 initApp();
             } catch (e) {
                 console.error("App Crash:", e);
-                alert("Error starting app. Resetting data might be needed if corruption occurred.");
+                showToast("Error starting app. Resetting data might be needed if corruption occurred.");
             }
             
             const loader = document.getElementById('app-loader');
@@ -2549,7 +2615,7 @@
                 }
                 
                 if(state.filterRoom !== 'All') {
-                    if(checkConflict(null, null, arr)) { alert("Room unavailable!"); state.selection = []; renderCalendar(); return; }
+                    if(checkConflict(null, null, arr)) { showToast("Room unavailable!"); state.selection = []; renderCalendar(); return; }
                 }
                 state.selection = arr; openBookingModal();
             }
@@ -2652,7 +2718,7 @@
         function continueSelectedRoomsFromRoomPicker() {
             const date = state.roomPickerDate;
             if (!date) return;
-            if (!state.roomPickerSelection.length) return alert('Select at least one room');
+            if (!state.roomPickerSelection.length) return showToast('Select at least one room');
             if (!requireCloudLogin('add a booking')) return;
 
             // BUG-02 fix: validate selected rooms are actually free on this date before
@@ -2660,7 +2726,7 @@
             // at open time; a late cloud sync could have changed availability since then.
             const roomsToCheck = state.roomPickerSelection.map(type => ({ type, count: 1, soldAs: getDefaultRoomSetup(type) }));
             if (checkConflict(roomsToCheck, null, [date])) {
-                return alert('⚠️ One or more selected rooms are already booked on this date. Please choose a different room.');
+                return showToast('⚠️ One or more selected rooms are already booked on this date. Please choose a different room.');
             }
 
             const chosenRooms = [...state.roomPickerSelection];
@@ -2685,7 +2751,7 @@
 
             const existing = state.bookings[date] || [];
             if (existing.length === 0) {
-                alert('No existing bookings on this date');
+                showToast('No existing bookings on this date');
                 return;
             }
 
@@ -2938,26 +3004,26 @@
             if (!requireCloudLogin('save a booking')) return;
             const guestName = document.getElementById('guestName').value.trim();
             const guestPhone = document.getElementById('guestPhone').value.trim();
-            if(!guestName) return alert('Guest name is required');
-            if(!guestPhone) return alert('Guest contact number required');
+            if(!guestName) return showToast('Guest name is required');
+            if(!guestPhone) return showToast('Guest contact number required');
             
             // BUG-30 fix: Add max guest count validation to prevent unrealistic or accidental values
             const guestCount = parseInt(document.getElementById('guestCount').value, 10);
-            if (isNaN(guestCount) || guestCount < 1 || guestCount > 30) return alert('Guest count must be between 1 and 30');
+            if (isNaN(guestCount) || guestCount < 1 || guestCount > 30) return showToast('Guest count must be between 1 and 30');
 
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
             if (!startDate || !endDate || endDate <= startDate || state.selection.length === 0) {
-                return alert('Select a valid check-in and check-out date');
+                return showToast('Select a valid check-in and check-out date');
             }
             const total = parseFloat(document.getElementById('totalAmount').value) || 0; // BUG-09: parseFloat for decimal prices
             const advance = parseFloat(document.getElementById('advance').value) || 0;   // BUG-09: parseFloat for decimal amounts
-            if (total <= 0) return alert('Total amount must be greater than 0');
-            if (advance < 0) return alert('Amount received cannot be negative');
-            if (advance > total) return alert('Amount received cannot be greater than total amount');
+            if (total <= 0) return showToast('Total amount must be greater than 0');
+            if (advance < 0) return showToast('Amount received cannot be negative');
+            if (advance > total) return showToast('Amount received cannot be greater than total amount');
             
             const rooms = getEffectiveSelectedModalRooms();
-            if(rooms.length === 0) return alert('Select at least one room');
+            if(rooms.length === 0) return showToast('Select at least one room');
 
             const saveBtn = document.getElementById('btnSaveBooking');
             const originalBtnText = saveBtn ? saveBtn.innerText : '';
@@ -2973,7 +3039,7 @@
                 state.selection = selectedRange;
                 if (editingId) previousBooking = findBookingById(editingId) || previousBooking;
                 if(checkConflict(rooms, editingId)) {
-                    alert('\u26a0\ufe0f Room Conflict! These dates are no longer available after the latest sync. Please choose a different date or room.');
+                    showToast('\u26a0\ufe0f Room Conflict! These dates are no longer available after the latest sync. Please choose a different date or room.');
                     return;
                 }
                 const bookingId = editingId || Date.now().toString();
@@ -2983,11 +3049,11 @@
                     lockResult = await acquireBookingLocks(rooms, selectedRange, bookingId);
                 } catch (error) {
                     console.error('Booking lock failed:', error);
-                    alert('Could not confirm room availability with cloud sync. Please check internet connection and try again.');
+                    showToast('Could not confirm room availability with cloud sync. Please check internet connection and try again.');
                     return;
                 }
                 if (!lockResult.ok) {
-                    alert('\u26a0\ufe0f This room/date was just taken on another device. Please sync and choose another date or room.');
+                    showToast('\u26a0\ufe0f This room/date was just taken on another device. Please sync and choose another date or room.');
                     return;
                 }
 
@@ -3093,9 +3159,9 @@
             const tripleRate = parseFloat(document.getElementById('priceTriple').value) || 0;
             const familyRate = parseFloat(document.getElementById('priceFamily').value) || 0;
             const villaRate = parseFloat(document.getElementById('priceVilla').value) || 0;
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)) return alert('Select a valid effective date');
-            if ([doubleRate, tripleRate, familyRate, villaRate].some(rate => rate <= 0)) return alert('All room prices must be greater than 0');
-            if (!confirm(`Apply these new prices from ${effectiveFrom}? Existing bookings will keep their saved totals.`)) return;
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)) return showToast('Select a valid effective date');
+            if ([doubleRate, tripleRate, familyRate, villaRate].some(rate => rate <= 0)) return showToast('All room prices must be greater than 0');
+            if (!(await showConfirm(`Apply these new prices from ${effectiveFrom}? Existing bookings will keep their saved totals.`)) return;
 
             const entry = {
                 id: `price_${Date.now()}`,
@@ -3116,7 +3182,7 @@
             persistPriceSettingsToCloud();
             refreshPriceSettingsModal();
             renderHome();
-            alert('Room prices updated.');
+            showToast('Room prices updated.', 'success');
         }
         function clearExpenseEditForm() { state.editingExpenseId = null; }
         function editExpense(id) {
@@ -3135,7 +3201,7 @@
             const exDate = document.getElementById('exDate').value || getDefaultTxnDateForFinanceRange();
             const category = document.getElementById('exCategory').value || 'uncategorized';
             if(!desc || !amt) return;
-            if ((parseFloat(amt) || 0) <= 0) return alert('Expense amount must be greater than 0');
+            if ((parseFloat(amt) || 0) <= 0) return showToast('Expense amount must be greater than 0');
             const expense = { id: Date.now().toString(), date: exDate, desc, amount: parseFloat(amt) || 0, category, updatedAt: new Date().toISOString() };
             state.expenses.push(expense);
             persistExpenseToCloud(expense);
@@ -3143,16 +3209,16 @@
             clearExpenseForm();
             setTxnAddFormCollapsed('expense', true);
         }
-        function saveExpenseEdit() {
+        async function saveExpenseEdit() {
             if (!requireCloudLogin('edit an expense')) return;
             if (!state.editingExpenseId) return;
             const desc = document.getElementById('editExDesc').value;
             const amount = document.getElementById('editExAmount').value;
             const date = document.getElementById('editExDate').value || getDefaultTxnDateForFinanceRange();
             const category = document.getElementById('editExCategory').value || 'uncategorized';
-            if (!desc || !amount) return alert('Description and amount are required');
-            if ((parseFloat(amount) || 0) <= 0) return alert('Expense amount must be greater than 0');
-            if (!confirm('Save changes to this expense?')) return;
+            if (!desc || !amount) return showToast('Description and amount are required');
+            if ((parseFloat(amount) || 0) <= 0) return showToast('Expense amount must be greater than 0');
+            if (!(await showConfirm('Save changes to this expense?')) return;
             const expense = { id: state.editingExpenseId, date, desc, amount: parseFloat(amount) || 0, category, updatedAt: new Date().toISOString() };
             state.expenses = state.expenses.map(item => String(item.id) === String(state.editingExpenseId) ? expense : item);
             persistExpenseToCloud(expense);
@@ -3167,7 +3233,7 @@
             const expense = state.expenses.find(e => String(e.id) === String(id));
             if (!expense) return;
             const label = category === 'villa' ? 'Villa Expense' : 'Home Expense';
-            if (!confirm(`Mark this as ${label}?`)) return;
+            if (!(await showConfirm(`Mark this as ${label}?`)) return;
             const updated = { ...expense, category };
             state.expenses = state.expenses.map(item => String(item.id) === String(id) ? updated : item);
             persistExpenseToCloud(updated);
@@ -3200,7 +3266,7 @@
         function renderExpensesList() {
             const list = document.getElementById('expensesList'); list.innerHTML = '';
             syncExpenseFilterTabs();
-            if(state.expenses.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No expenses yet</p>'; return; }
+            if(state.expenses.length === 0) { list.innerHTML = `<div style='text-align:center; padding: 40px 20px; color:#999;'><i class='fas fa-receipt' style='font-size:3rem; color:#e0e0e0; margin-bottom:15px;'></i><br>No expenses found.<br><button onclick='toggleTxnAddForm("expense")' style='margin-top:15px; padding:8px 16px; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--primary); font-weight:bold; cursor:pointer;'>+ Add Expense</button></div>`; return; }
             const range = getFinancePeriodRange();
             const periodLabel = state.financePeriod.charAt(0).toUpperCase() + state.financePeriod.slice(1);
             const uncategorizedInRange = state.expenses.filter(e => isDateInRange(e.date, range) && (e.category || 'uncategorized') === 'uncategorized');
@@ -3242,12 +3308,12 @@
                 </div>`;
             });
         }
-        function deleteExpense(id) { if(!requireCloudLogin('delete an expense')) return; if(!confirm("Delete?")) return; state.expenses = state.expenses.filter(e => String(e.id) !== String(id)); if(String(state.editingExpenseId) === String(id)) clearExpenseEditForm(); deleteExpenseFromCloud(id); renderExpensesList(); renderMenu(); }
-        function deleteEditingExpense() {
+        async function deleteExpense(id) { if(!requireCloudLogin('delete an expense')) return; if(!(await showConfirm("Delete?")) return; state.expenses = state.expenses.filter(e => String(e.id) !== String(id)); if(String(state.editingExpenseId) === String(id)) clearExpenseEditForm(); deleteExpenseFromCloud(id); renderExpensesList(); renderMenu(); }
+        async function deleteEditingExpense() {
             if (!requireCloudLogin('delete an expense')) return;
             if (!state.editingExpenseId) return;
             const id = state.editingExpenseId;
-            if(!confirm("Delete this expense?")) return;
+            if(!(await showConfirm("Delete this expense?")) return;
             state.expenses = state.expenses.filter(e => String(e.id) !== String(id));
             deleteExpenseFromCloud(id);
             closeModal('editExpenseModal');
@@ -3277,7 +3343,7 @@
             const mealDate = document.getElementById('mealDate').value || getDefaultTxnDateForFinanceRange();
             const source = document.getElementById('mealSource').value || 'meals';
             if(!desc || !amt) return;
-            if ((parseFloat(amt) || 0) <= 0) return alert('Income amount must be greater than 0');
+            if ((parseFloat(amt) || 0) <= 0) return showToast('Income amount must be greater than 0');
             const meal = { id: Date.now().toString(), date: mealDate, desc, amount: parseFloat(amt) || 0, source, updatedAt: new Date().toISOString() };
             state.meals.push(meal);
             persistMealToCloud(meal);
@@ -3285,16 +3351,16 @@
             clearMealForm();
             setTxnAddFormCollapsed('income', true);
         }
-        function saveMealEdit() {
+        async function saveMealEdit() {
             if (!requireCloudLogin('edit income')) return;
             if (!state.editingMealId) return;
             const desc = document.getElementById('editMealDesc').value;
             const amount = document.getElementById('editMealAmount').value;
             const date = document.getElementById('editMealDate').value || getDefaultTxnDateForFinanceRange();
             const source = document.getElementById('editMealSource').value || 'meals';
-            if (!desc || !amount) return alert('Description and amount are required');
-            if ((parseFloat(amount) || 0) <= 0) return alert('Income amount must be greater than 0');
-            if (!confirm('Save changes to this income entry?')) return;
+            if (!desc || !amount) return showToast('Description and amount are required');
+            if ((parseFloat(amount) || 0) <= 0) return showToast('Income amount must be greater than 0');
+            if (!(await showConfirm('Save changes to this income entry?')) return;
             const meal = { id: state.editingMealId, date, desc, amount: parseFloat(amount) || 0, source, updatedAt: new Date().toISOString() };
             state.meals = state.meals.map(item => String(item.id) === String(state.editingMealId) ? meal : item);
             syncIncomeAlias();
@@ -3330,7 +3396,7 @@
         function renderMealsList() {
             const list = document.getElementById('mealsList'); list.innerHTML = '';
             syncIncomeFilterTabs();
-            if(state.meals.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999; margin:10px 0;">No income yet</p>'; return; }
+            if(state.meals.length === 0) { list.innerHTML = `<div style='text-align:center; padding: 40px 20px; color:#999;'><i class='fas fa-hand-holding-usd' style='font-size:3rem; color:#e0e0e0; margin-bottom:15px;'></i><br>No income found.<br><button onclick='toggleTxnAddForm("income")' style='margin-top:15px; padding:8px 16px; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--primary); font-weight:bold; cursor:pointer;'>+ Add Income</button></div>`; return; }
             const range = getFinancePeriodRange();
             const periodLabel = state.financePeriod.charAt(0).toUpperCase() + state.financePeriod.slice(1);
             const items = state.meals
@@ -3362,12 +3428,12 @@
                 </div>`;
             });
         }
-        function deleteMeal(id) { if(!requireCloudLogin('delete income')) return; if(!confirm("Delete?")) return; state.meals = state.meals.filter(m => String(m.id) !== String(id)); syncIncomeAlias(); if(String(state.editingMealId) === String(id)) clearMealEditForm(); deleteMealFromCloud(id); renderMealsList(); renderMenu(); }
-        function deleteEditingMeal() {
+        async function deleteMeal(id) { if(!requireCloudLogin('delete income')) return; if(!(await showConfirm("Delete?")) return; state.meals = state.meals.filter(m => String(m.id) !== String(id)); syncIncomeAlias(); if(String(state.editingMealId) === String(id)) clearMealEditForm(); deleteMealFromCloud(id); renderMealsList(); renderMenu(); }
+        async function deleteEditingMeal() {
             if (!requireCloudLogin('delete income')) return;
             if (!state.editingMealId) return;
             const id = state.editingMealId;
-            if(!confirm("Delete this income entry?")) return;
+            if(!(await showConfirm("Delete this income entry?")) return;
             state.meals = state.meals.filter(m => String(m.id) !== String(id));
             syncIncomeAlias();
             deleteMealFromCloud(id);
@@ -3503,8 +3569,8 @@
             const checkout = document.getElementById('inquiryEndDate')?.value;
             const nights = getInquiryNights();
             const rooms = getSelectedInquiryRooms();
-            if (!date || !checkout || nights < 1) { alert('Select a valid check-in and check-out date'); return ''; }
-            if (rooms.length === 0) { alert('Select room(s) or villa'); return ''; }
+            if (!date || !checkout || nights < 1) { showToast('Select a valid check-in and check-out date'); return ''; }
+            if (rooms.length === 0) { showToast('Select room(s) or villa'); return ''; }
 
             const total = getInquiryRoomNightlyTotal(rooms, date) * nights;
             const roomLines = rooms.map(formatInquiryRoomRateLine).join('\n');
@@ -3549,9 +3615,9 @@
             window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`);
         }
 
-        function settleBill(id) {
+        async function settleBill(id) {
             if (!requireCloudLogin('update a payment')) return;
-            if(!confirm("Mark as Fully Paid?")) return;
+            if(!(await showConfirm("Mark as Fully Paid?")) return;
             let updatedBooking = null; let found = false;
             Object.keys(state.bookings).forEach(d => {
                 state.bookings[d] = state.bookings[d].map(b => {
@@ -3595,11 +3661,11 @@
                 if(document.getElementById('detailsModal').classList.contains('open')) openDetails(updatedBooking);
             }
         }
-        function deleteBooking() {
+        async function deleteBooking() {
             if (!requireCloudLogin('delete a booking')) return;
-            if(!confirm("Delete?")) return;
+            if(!(await showConfirm("Delete?")) return;
             const id = String(state.viewId || '');
-            if (!id) return alert('Could not find this booking ID. Please close and open the booking again.');
+            if (!id) return showToast('Could not find this booking ID. Please close and open the booking again.');
             let found = false;
             markBookingDeleted(id);
             queueDeleteBookingLocks(id);
@@ -3706,17 +3772,17 @@
                     saveLocalData();
                     replaceCloudWithLocalData();
                     refreshDataViews();
-                    alert(isCloudConfigured() ? 'Backup restored and queued for cloud sync.' : 'Backup restored on this device.');
+                    showToast(isCloudConfigured() ? 'Backup restored and queued for cloud sync.' : 'Backup restored on this device.', 'success');
                 } catch (error) {
                     console.error('Backup import failed:', error);
-                    alert('Could not import this backup. Please choose a valid Lake Breeze Villa JSON backup file.');
+                    showToast('Could not import this backup. Please choose a valid Lake Breeze Villa JSON backup file.');
                 } finally {
                     input.value = '';
                 }
             };
             r.onerror = () => {
                 input.value = '';
-                alert('Could not read this backup file. Please try again.');
+                showToast('Could not read this backup file. Please try again.');
             };
             r.readAsText(input.files[0]);
         }
