@@ -1706,7 +1706,8 @@
                     if (showMessage) setCloudSyncStatus('syncing', 'Uploading this device data...');
                     return;
                 }
-                const cloudBookingRecords = Object.values(cloud.bookings || {}).some(Array.isArray)
+                const isLegacyStructure = Object.values(cloud.bookings || {}).some(Array.isArray);
+                const cloudBookingRecords = isLegacyStructure
                     ? collectUniqueBookingsFromDateMap(cloud.bookings)
                     : cloud.bookings;
                 state.bookings = buildBookingsByDate(filterDeletedBookingRecords(cloudBookingRecords));
@@ -1716,6 +1717,12 @@
                 syncIncomeAlias();
                 saveLocalData();
                 refreshDataViews();
+                
+                if (isLegacyStructure) {
+                    queueCloudOperation('PUT', 'bookings', getUniqueBookingsMap());
+                    setTimeout(flushCloudQueue, 0);
+                }
+
                 if (cloud.bookings && !cloud.bookingLocks) {
                     queueCloudOperation('PUT', 'bookingLocks', buildBookingLocksMap());
                     setTimeout(flushCloudQueue, 0);
