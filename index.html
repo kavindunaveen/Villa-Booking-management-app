@@ -1706,8 +1706,11 @@
                     if (showMessage) setCloudSyncStatus('syncing', 'Uploading this device data...');
                     return;
                 }
-                const isLegacyStructure = Object.values(cloud.bookings || {}).some(Array.isArray);
-                const cloudBookingRecords = isLegacyStructure
+                const isLegacyBookings = Object.values(cloud.bookings || {}).some(Array.isArray);
+                const isLegacyExpenses = Array.isArray(cloud.expenses);
+                const isLegacyMeals = Array.isArray(cloud.income || cloud.meals);
+                
+                const cloudBookingRecords = isLegacyBookings
                     ? collectUniqueBookingsFromDateMap(cloud.bookings)
                     : cloud.bookings;
                 state.bookings = buildBookingsByDate(filterDeletedBookingRecords(cloudBookingRecords));
@@ -1718,10 +1721,15 @@
                 saveLocalData();
                 refreshDataViews();
                 
-                if (isLegacyStructure) {
-                    queueCloudOperation('PUT', 'bookings', getUniqueBookingsMap());
-                    setTimeout(flushCloudQueue, 0);
+                let legacyUpgraded = false;
+                if (isLegacyBookings) { queueCloudOperation('PUT', 'bookings', getUniqueBookingsMap()); legacyUpgraded = true; }
+                if (isLegacyExpenses) { queueCloudOperation('PUT', 'expenses', arrayToRecordMap(state.expenses)); legacyUpgraded = true; }
+                if (isLegacyMeals) { 
+                    queueCloudOperation('PUT', 'income', arrayToRecordMap(state.meals)); 
+                    queueCloudOperation('PUT', 'meals', arrayToRecordMap(state.meals)); 
+                    legacyUpgraded = true; 
                 }
+                if (legacyUpgraded) setTimeout(flushCloudQueue, 0);
 
                 if (cloud.bookings && !cloud.bookingLocks) {
                     queueCloudOperation('PUT', 'bookingLocks', buildBookingLocksMap());
